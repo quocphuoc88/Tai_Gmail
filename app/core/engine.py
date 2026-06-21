@@ -13,6 +13,7 @@ Logic giữ nguyên hành vi bản gốc:
 from __future__ import annotations
 
 import base64
+import inspect
 import re
 import os
 import unicodedata
@@ -90,6 +91,21 @@ def choose_folder_by_rules(from_email: str, folder_rules: List[Dict[str, str]]) 
         if kind == "regex" and re.fullmatch(patt, e, flags=re.IGNORECASE):
             return folder
     return None
+
+
+def choose_brand_prefix(subject: str, cfg: ClientConfig) -> str:
+    """Tiền tố tên file theo từ khóa trong tiêu đề (vd TaiLoc: ACECOOK/ÁCHÂU/HD).
+
+    Trả về "" nếu khách không khai brand_rules.
+    """
+    if not cfg.brand_rules:
+        return ""
+    s = strip_accents(subject or "").upper()
+    for r in cfg.brand_rules:
+        kw = strip_accents(r.get("keyword", "")).upper()
+        if kw and kw in s:
+            return r.get("prefix", "")
+    return cfg.brand_default
 
 
 def choose_base_dir(from_email: str, cfg: ClientConfig) -> Optional[str]:
@@ -254,6 +270,9 @@ def get_service(cfg: ClientConfig):
 def build_gmail_query(cfg: ClientConfig) -> str:
     parts = []
 
+    if cfg.extra_query.strip():
+        parts.append(cfg.extra_query.strip())
+
     if cfg.sender.strip():
         addrs = cfg.sender.split()
         if len(addrs) == 1:
@@ -311,6 +330,9 @@ def run(cfg: ClientConfig, logger=print) -> int:
         base_dir = choose_base_dir(from_email, cfg)
         if base_dir:
             save_dir = Path(base_dir)
+        elif cfg.flat_save:
+            # Lưu phẳng vào base_save_dir, không tạo thư mục con theo người gửi (TaiLoc).
+            save_dir = Path(cfg.base_save_dir)
         else:
             folder_from_rules = choose_folder_by_rules(from_email, cfg.folder_rules)
             folder_name = folder_from_rules or normalize_sender_folder(from_email)
@@ -349,12 +371,19 @@ def run(cfg: ClientConfig, logger=print) -> int:
             # Có đính kèm -> không chạy provider. Fail thì không đánh dấu đã đọc.
             continue
 
+        # Tiền tố tên file theo brand (nếu khách khai brand_rules, vd TaiLoc)
+        name_prefix = choose_brand_prefix(subject, cfg)
+
         # Ưu tiên 2: nhà cung cấp hóa đơn
         for prov_name, is_match, download_fn in PROVIDERS:
             if not is_match(subject, from_email, body_text):
                 continue
             logger(f"[{cfg.client_id}] EMAIL {prov_name}: {subject}")
-            ok = download_fn(body_text, str(save_dir))
+            # Chỉ truyền name_prefix cho provider nào hỗ trợ (vd direct_link).
+            extra = {}
+            if name_prefix and "name_prefix" in inspect.signature(download_fn).parameters:
+                extra["name_prefix"] = name_prefix
+            ok = download_fn(body_text, str(save_dir), **extra)
             if ok:
                 total_saved += 1
                 service.users().messages().modify(

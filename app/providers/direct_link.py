@@ -143,7 +143,7 @@ def _ensure_unique(path: Path) -> Path:
         i += 1
 
 
-def _download(url, save_path: Path, timeout=30):
+def _download(url, save_path: Path, timeout=30, honor_content_disposition=True):
 
     try:
 
@@ -160,15 +160,17 @@ def _download(url, save_path: Path, timeout=30):
             logger.warning("Link trả về HTML (không phải file): %s", url)
             return None
 
-        # Ưu tiên tên file từ Content-Disposition nếu server có gửi
-        cd = r.headers.get("Content-Disposition", "")
+        # Ưu tiên tên file từ Content-Disposition nếu server có gửi.
+        # (Bỏ qua khi có tiền tố brand để giữ đúng tên <brand>_<số> - TaiLoc.)
+        if honor_content_disposition:
+            cd = r.headers.get("Content-Disposition", "")
 
-        m = re.search(r'filename\*?=(?:UTF-8\'\')?"?([^";]+)"?', cd, re.IGNORECASE)
+            m = re.search(r'filename\*?=(?:UTF-8\'\')?"?([^";]+)"?', cd, re.IGNORECASE)
 
-        if m:
-            save_path = save_path.with_name(
-                re.sub(r'[\\/:*?"<>|]', "_", m.group(1).strip())
-            )
+            if m:
+                save_path = save_path.with_name(
+                    re.sub(r'[\\/:*?"<>|]', "_", m.group(1).strip())
+                )
 
         save_path = _ensure_unique(save_path)
 
@@ -195,7 +197,7 @@ def is_direct_link_email(subject, from_email, body_text):
     return bool(pdf_url or xml_url)
 
 
-def download_direct_invoice(body_text, save_dir):
+def download_direct_invoice(body_text, save_dir, name_prefix=""):
 
     pdf_url, xml_url = extract_links(body_text or "")
 
@@ -206,19 +208,23 @@ def download_direct_invoice(body_text, save_dir):
 
     so_hd = extract_invoice_number(body_text)
 
+    # Tiền tố brand (vd TaiLoc: "ACECOOK_12345"); rỗng -> giữ tên cũ "<số>".
+    stem = f"{name_prefix}_{so_hd}" if name_prefix else so_hd
+    honor_cd = not name_prefix   # có brand -> ép tên, không theo Content-Disposition
+
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
 
     ok = False
 
     if pdf_url:
-        if _download(pdf_url, save_dir / f"{so_hd}.pdf"):
+        if _download(pdf_url, save_dir / f"{stem}.pdf", honor_content_disposition=honor_cd):
             ok = True
     else:
         print("DIRECT: Không có link PDF")
 
     if xml_url:
-        if _download(xml_url, save_dir / f"{so_hd}.xml"):
+        if _download(xml_url, save_dir / f"{stem}.xml", honor_content_disposition=honor_cd):
             ok = True
     else:
         print("DIRECT: Không có link XML")

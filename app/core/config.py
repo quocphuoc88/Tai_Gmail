@@ -34,6 +34,21 @@ class ClientConfig:
     #   {"kind": "email|domain|regex", "pattern": "...", "folder": "TEN-THU-MUC"}
     folder_rules: List[Dict[str, str]] = field(default_factory=list)
 
+    # ---- Tùy chọn nâng cao (cho các khách di cư từ script cũ) ----
+    # Chuỗi ghép THÊM vào đầu query Gmail, vd "has:attachment" (EMECC).
+    extra_query: str = ""
+    # True  -> lưu vào root_dir/'<datefrom>_to_<dateto>' (mặc định, như GPHUC).
+    # False -> lưu thẳng root_dir (EMECC, TaiLoc).
+    use_date_subfolder: bool = True
+    # True  -> lưu PHẲNG vào base_save_dir, KHÔNG tạo thư mục con theo người gửi (TaiLoc).
+    # False -> lưu vào base_save_dir/<folder_rule | tên người gửi> (mặc định, EMECC).
+    flat_save: bool = False
+    # brand_rules: đặt TIỀN TỐ tên file theo từ khóa trong tiêu đề (TaiLoc). Mỗi phần tử:
+    #   {"keyword": "ACECOOK", "prefix": "ACECOOK"} -> file thành ACECOOK_<số>.pdf
+    brand_rules: List[Dict[str, str]] = field(default_factory=list)
+    # Tiền tố dùng khi có brand_rules nhưng không khớp từ khóa nào (vd "HD").
+    brand_default: str = ""
+
     # ---- Đường dẫn dẫn xuất ----
     def expand_tokens(self, text: str) -> str:
         """Thay token {date}/{datefrom}/{dateto} trong một chuỗi đường dẫn."""
@@ -45,9 +60,13 @@ class ClientConfig:
 
     @property
     def base_save_dir(self) -> str:
-        """Thư mục lưu mặc định = root_dir / '<datefrom>_to_<dateto>'."""
+        """Thư mục lưu mặc định.
+
+        - use_date_subfolder=True  -> root_dir / '<datefrom>_to_<dateto>'
+        - use_date_subfolder=False -> chính root_dir
+        """
         root = self.expand_tokens(self.root_dir)
-        if self.date_from and self.date_to:
+        if self.use_date_subfolder and self.date_from and self.date_to:
             sub = f"{self.date_from}_to_{self.date_to}"
             return os.path.join(root, sub)
         return root
@@ -79,6 +98,11 @@ def load_clients(json_path: str) -> Dict[str, ClientConfig]:
             download_all=_to_bool(data.get("download_all", False)),
             path_rules=data.get("path_rules", []),
             folder_rules=data.get("folder_rules", []),
+            extra_query=data.get("extra_query", ""),
+            use_date_subfolder=data.get("use_date_subfolder", True),
+            flat_save=data.get("flat_save", False),
+            brand_rules=data.get("brand_rules", []),
+            brand_default=data.get("brand_default", ""),
         )
     return clients
 
