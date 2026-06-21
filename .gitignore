@@ -1,0 +1,34 @@
+# ===== Môi trường ảo / thư viện =====
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# ===== Đóng gói PyInstaller =====
+build/
+dist/
+*.spec.bak
+
+# ===== PyCharm =====
+.idea/
+
+# ===== Claude Code (cấu hình cục bộ) =====
+.claude/
+
+# ===== BÍ MẬT - KHÔNG ĐƯA LÊN GIT =====
+# OAuth client secret của Google
+credentials*.json
+# Token đăng nhập đã cấp quyền
+token*.json
+token_*.json
+
+# ===== Dữ liệu / kết quả sinh ra =====
+download_log.csv
+*.xlsx
+/app/HOADON*/
+# Thư mục tải hóa đơn tạm (nếu lưu trong project)
+
+# ===== Khác =====
+*.log
+.DS_Store
+Thumbs.db
