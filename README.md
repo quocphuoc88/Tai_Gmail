@@ -65,4 +65,15 @@ Mọi cấu hình từng khách nằm trong `app/clients.json`. **Thêm khách m
   - Đã gộp: GPHUC, GPHD, 157, EMECC, TaiLoc.
   - Chưa gộp (giữ bản gốc): `HDDT_Sagitta.py` (chạy theo Excel).
   - File cũ chuyển vào `app/legacy/` làm dự phòng.
-- [ ] **Bước 3:** Dựng giao diện desktop hợp nhất.
+- [x] **Bước 3:** Dựng giao diện desktop hợp nhất (`app/gui.py`).
+
+## Giao diện desktop
+
+```powershell
+cd app
+..\.venv\Scripts\pythonw.exe gui.py
+```
+
+Chọn khách (nhiều), tùy chọn ghi đè ngày bằng lịch, chọn chế độ tải, bấm
+**🚀 Tải hóa đơn**. Việc tải chạy nền (không treo giao diện), log hiện trực tiếp.
+Nút **Xem QUERY (thử)** để kiểm tra trước mà không gọi Gmail.
