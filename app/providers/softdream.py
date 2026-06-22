@@ -58,15 +58,21 @@ def is_softdream_email(subject, from_email, body_text):
 
     f = (from_email or "").lower()
 
-    if f == "hoadon-noreply@softdreams.vn":
-        return True
-
     if f.endswith("@softdreams.vn"):
         return True
 
     b = (body_text or "").lower()
 
-    return "easyinvoice.com.vn/invoice/" in b
+    # Email có khi được KHÁCH forward -> From là gmail của khách, không phải
+    # softdreams.vn. Khi đó nhận diện theo dấu hiệu trong NỘI DUNG.
+    markers = (
+        "softdreams",                   # nguồn gốc trong header forward
+        "tracuu.easyinvoice.vn",        # domain trang tra cứu thật
+        "/invoice/viewfromemail",       # link xem hóa đơn
+        "/invoice/downloadinvpdf",      # link tải PDF
+        "easyinvoice.com.vn/invoice/",  # giữ marker cũ
+    )
+    return any(mk in b for mk in markers)
 
 
 # ==========================================
