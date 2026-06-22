@@ -237,29 +237,76 @@ def _xoa_token(cfg: ClientConfig):
         pass
 
 
-def get_service(cfg: ClientConfig):
+def auth_status(cfg: ClientConfig) -> str:
+    """Trạng thái đăng nhập (KHÔNG mở trình duyệt):
+       'ok'      : token dùng được (hoặc refresh được)
+       'first'   : chưa có token -> cần đăng nhập LẦN ĐẦU
+       'relogin' : token hỏng/hết hạn/bị thu hồi -> cần ĐĂNG NHẬP LẠI
+    """
+    if not os.path.exists(cfg.token_file):
+        return "first"
+    try:
+        creds = Credentials.from_authorized_user_file(cfg.token_file, SCOPES)
+    except Exception:
+        return "relogin"
+    if creds and creds.valid:
+        return "ok"
+    if creds and creds.expired and creds.refresh_token:
+        try:
+            creds.refresh(Request())
+            with open(cfg.token_file, "w") as f:
+                f.write(creds.to_json())
+            return "ok"
+        except Exception:
+            return "relogin"
+    return "relogin"
+
+
+def get_service(cfg: ClientConfig, logger=print, notify=None):
     creds = None
-    if os.path.exists(cfg.token_file):
+    had_token = os.path.exists(cfg.token_file)
+    token_broken = False
+
+    if had_token:
         try:
             creds = Credentials.from_authorized_user_file(cfg.token_file, SCOPES)
         except Exception as e:
-            print("Token file hỏng:", e)
+            logger(f"[{cfg.client_id}] Token file hỏng: {e}")
             creds = None
+            token_broken = True
             _xoa_token(cfg)
 
     if creds and creds.expired and creds.refresh_token:
         try:
             creds.refresh(Request())
         except RefreshError as e:
-            print("Refresh token thất bại (hết hạn/bị thu hồi):", e)
+            logger(f"[{cfg.client_id}] Refresh token thất bại: {e}")
             creds = None
+            token_broken = True
             _xoa_token(cfg)
 
     if not creds or not creds.valid:
+        # Cần mở trình duyệt. Phân biệt LẦN ĐẦU vs ĐĂNG NHẬP LẠI để báo rõ.
+        kind = "relogin" if (had_token or token_broken) else "first"
+        name = cfg.display_name or cfg.client_id
+        who = f" (email {cfg.email})" if cfg.email else ""
+        if kind == "first":
+            logger(f"🔑 [{name}] Lần đầu dùng tài khoản này — cửa sổ đăng nhập "
+                   f"Google sẽ mở. Hãy chọn ĐÚNG email{who}.")
+        else:
+            logger(f"⚠️ [{name}] Token đã HẾT HẠN / bị thu hồi — CẦN ĐĂNG NHẬP "
+                   f"LẠI Google{who}. Cửa sổ đăng nhập sẽ mở.")
+        if notify:
+            try:
+                notify(kind, cfg)
+            except Exception:
+                pass
+
         flow = InstalledAppFlow.from_client_secrets_file(cfg.credentials_file, SCOPES)
         creds = flow.run_local_server(port=0)
         with open(cfg.token_file, "w") as token:
             token.write(creds.to_json())
+        logger(f"✅ [{name}] Đăng nhập thành công.")
 
     return build("gmail", "v1", credentials=creds)
 
@@ -300,9 +347,9 @@ def build_gmail_query(cfg: ClientConfig) -> str:
 # =========================================================
 # MAIN
 # =========================================================
-def run(cfg: ClientConfig, logger=print) -> int:
+def run(cfg: ClientConfig, logger=print, notify=None) -> int:
     """Chạy tải hóa đơn cho một khách. Trả về số file đã lưu."""
-    service = get_service(cfg)
+    service = get_service(cfg, logger, notify)
     gmail_query = build_gmail_query(cfg)
     logger(f"[{cfg.client_id}] QUERY: {gmail_query}")
 
@@ -406,17 +453,23 @@ def _cleanup_selenium(logger=print):
         logger(f"Dọn Chrome MISA lỗi: {e}")
 
 
-def run_with_retry(cfg: ClientConfig, logger=print) -> int:
+def run_with_retry(cfg: ClientConfig, logger=print, notify=None) -> int:
     """Như run() nhưng nếu token chết GIỮA CHỪNG -> xóa token, chạy lại 1 lần.
 
     Luôn đóng Chrome dùng chung của MISA khi kết thúc (kể cả khi lỗi).
     """
     try:
         try:
-            return run(cfg, logger)
+            return run(cfg, logger, notify)
         except RefreshError:
-            logger(f"[{cfg.client_id}] Token hết hạn giữa phiên -> xóa, đăng nhập lại...")
+            name = cfg.display_name or cfg.client_id
+            logger(f"⚠️ [{name}] Token hết hạn GIỮA PHIÊN — cần ĐĂNG NHẬP LẠI...")
+            if notify:
+                try:
+                    notify("relogin", cfg)
+                except Exception:
+                    pass
             _xoa_token(cfg)
-            return run(cfg, logger)
+            return run(cfg, logger, notify)
     finally:
         _cleanup_selenium(logger)

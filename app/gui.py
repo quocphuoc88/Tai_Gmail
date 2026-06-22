@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import queue
+import shutil
 import sys
 import threading
 import tkinter as tk
@@ -20,7 +21,7 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
 
-from core.config import load_clients, save_clients  # noqa: E402
+from core.config import load_clients, save_clients, ClientConfig  # noqa: E402
 
 CLIENTS_FILE = os.path.join(APP_DIR, "clients.json")
 
@@ -243,6 +244,22 @@ class App:
     def _work(self, ids: list[str]):
         def logger(msg):
             self.log_q.put(str(msg))
+
+        def notify(kind, cfg):
+            name = cfg.display_name or cfg.client_id
+            if kind == "first":
+                self.log_q.put((
+                    "__POPUP__", "Đăng nhập lần đầu",
+                    f"Tài khoản '{name}' cần ĐĂNG NHẬP Google lần đầu.\n"
+                    f"Cửa sổ trình duyệt sẽ mở — hãy chọn đúng email rồi cấp quyền.",
+                ))
+            else:
+                self.log_q.put((
+                    "__POPUP__", "Cần đăng nhập lại",
+                    f"Tài khoản '{name}' đã HẾT HẠN đăng nhập (token Gmail).\n"
+                    f"Cửa sổ trình duyệt sẽ mở để ĐĂNG NHẬP LẠI.",
+                ))
+
         try:
             from core.engine import run_with_retry
             clients = load_clients(CLIENTS_FILE)
@@ -250,7 +267,7 @@ class App:
             for cid in ids:
                 cfg = self._apply_overrides(clients[cid])
                 try:
-                    grand += run_with_retry(cfg, logger)
+                    grand += run_with_retry(cfg, logger, notify)
                 except Exception as e:
                     logger(f"[{cid}] LỖI: {e}")
             logger(f"========== XONG. Tổng đã lưu: {grand} file ==========")
@@ -262,13 +279,17 @@ class App:
     def _drain_log(self):
         try:
             while True:
-                msg = self.log_q.get_nowait()
-                if msg == _DONE:
+                item = self.log_q.get_nowait()
+                # Yêu cầu hiện popup (đăng nhập lần đầu / đăng nhập lại)
+                if isinstance(item, tuple) and item and item[0] == "__POPUP__":
+                    messagebox.showwarning(item[1], item[2])
+                    continue
+                if item == _DONE:
                     self.btn_run.configure(state="normal")
                     self.btn_dry.configure(state="normal")
                     self.status.configure(text="Sẵn sàng.", foreground="#0a7")
                 else:
-                    self.log_msg(msg)
+                    self.log_msg(item)
         except queue.Empty:
             pass
         self.root.after(100, self._drain_log)
@@ -283,9 +304,11 @@ class App:
         top.pack(fill="x", **pad)
         ttk.Label(top, text="Khách:").pack(side="left")
         self.cfg_client = tk.StringVar()
-        self.cfg_combo = ttk.Combobox(top, textvariable=self.cfg_client, state="readonly", width=28)
+        self.cfg_combo = ttk.Combobox(top, textvariable=self.cfg_client, state="readonly", width=26)
         self.cfg_combo.pack(side="left", padx=6)
         self.cfg_combo.bind("<<ComboboxSelected>>", lambda e: self._load_editor())
+        ttk.Button(top, text="➕ Thêm khách (Gmail)", command=self._add_client).pack(side="left", padx=4)
+        ttk.Button(top, text="🗑️ Xóa khách", command=self._delete_client).pack(side="left")
 
         info = ttk.LabelFrame(main, text="Thông tin khách")
         info.pack(fill="x", **pad)
@@ -497,6 +520,135 @@ class App:
         self.cfg_client.set(cfg.display_name)
         self._load_editor()
         self.cfg_status.configure(text="✅ Đã lưu vào clients.json")
+
+    # ---- Thêm / xóa khách (tài khoản Gmail) ----
+    def _add_client(self):
+        dlg = tk.Toplevel(self.root)
+        dlg.title("Thêm khách (tài khoản Gmail)")
+        dlg.transient(self.root)
+        dlg.grab_set()
+        dlg.resizable(False, False)
+
+        def field(label, r, width=46):
+            ttk.Label(dlg, text=label).grid(row=r, column=0, sticky="e", padx=8, pady=5)
+            e = ttk.Entry(dlg, width=width)
+            e.grid(row=r, column=1, sticky="w", padx=8, pady=5)
+            return e
+
+        e_id = field("Mã khách (không dấu, vd GP2):", 0)
+        e_name = field("Tên hiển thị:", 1)
+        e_email = field("Email tài khoản:", 2)
+
+        ttk.Label(dlg, text="File credentials (.json):").grid(row=3, column=0, sticky="e", padx=8, pady=5)
+        e_cred = ttk.Entry(dlg, width=36)
+        e_cred.grid(row=3, column=1, sticky="w", padx=8)
+
+        def pick_cred():
+            f = filedialog.askopenfilename(
+                title="Chọn file credentials .json (tải từ Google Cloud)",
+                filetypes=[("JSON", "*.json")], parent=dlg)
+            if f:
+                e_cred.delete(0, tk.END)
+                e_cred.insert(0, f)
+        ttk.Button(dlg, text="Chọn...", command=pick_cred).grid(row=3, column=2, padx=4)
+
+        ttk.Label(dlg, text="Thư mục mặc định:").grid(row=4, column=0, sticky="e", padx=8, pady=5)
+        e_root = ttk.Entry(dlg, width=36)
+        e_root.grid(row=4, column=1, sticky="w", padx=8)
+
+        def pick_root():
+            d = filedialog.askdirectory(title="Chọn thư mục lưu mặc định", parent=dlg)
+            if d:
+                e_root.delete(0, tk.END)
+                e_root.insert(0, d.replace("/", "\\"))
+        ttk.Button(dlg, text="Chọn...", command=pick_root).grid(row=4, column=2, padx=4)
+
+        ttk.Label(dlg, text="(Có thể dùng {date} trong đường dẫn = ngày hôm nay)",
+                  foreground="#777").grid(row=5, column=1, sticky="w", padx=8)
+
+        def submit():
+            import re as _re
+            cid = e_id.get().strip()
+            cred = e_cred.get().strip()
+            root = e_root.get().strip()
+            if not _re.fullmatch(r"[A-Za-z0-9_]+", cid or ""):
+                messagebox.showwarning("Sai mã", "Mã khách chỉ gồm chữ/số/gạch dưới (không dấu, không khoảng trắng).", parent=dlg)
+                return
+            if cid in self.clients:
+                messagebox.showwarning("Trùng mã", f"Mã '{cid}' đã tồn tại.", parent=dlg)
+                return
+            if not (cred and os.path.isfile(cred)):
+                messagebox.showwarning("Thiếu file", "Hãy chọn file credentials .json hợp lệ.", parent=dlg)
+                return
+            if not root:
+                messagebox.showwarning("Thiếu thư mục", "Hãy chọn thư mục lưu mặc định.", parent=dlg)
+                return
+            data = (cid, e_name.get().strip(), e_email.get().strip(), cred, root)
+            dlg.destroy()
+            self._create_client(*data)
+
+        bb = ttk.Frame(dlg)
+        bb.grid(row=6, column=0, columnspan=3, pady=12)
+        ttk.Button(bb, text="Đăng nhập Google & Lưu", command=submit).pack(side="left", padx=6)
+        ttk.Button(bb, text="Hủy", command=dlg.destroy).pack(side="left", padx=6)
+        e_id.focus_set()
+        self.root.wait_window(dlg)
+
+    def _create_client(self, cid, name, email, cred_src, root):
+        dst_cred = f"credentials_{cid}.json"
+        try:
+            shutil.copyfile(cred_src, os.path.join(APP_DIR, dst_cred))
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không copy được file credentials: {e}")
+            return
+        cfg = ClientConfig(
+            client_id=cid, credentials_file=dst_cred, token_file=f"token_{cid}.json",
+            root_dir=root, display_name=name or cid, email=email,
+        )
+        self.nb.select(self.tab_run)
+        self.log_msg(f"\n[Thêm khách] '{name or cid}' — mở trình duyệt đăng nhập Google...")
+
+        def work():
+            from core.engine import get_service
+            def logger(m):
+                self.log_q.put(str(m))
+            try:
+                get_service(cfg, logger)          # tạo token_<id>.json (mở trình duyệt)
+                self.root.after(0, lambda: self._finish_add(cfg))
+            except Exception as e:
+                self.log_q.put(("__POPUP__", "Lỗi đăng nhập",
+                                f"Không thêm được khách '{cid}':\n{e}"))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _finish_add(self, cfg):
+        self.clients[cfg.client_id] = cfg
+        save_clients(CLIENTS_FILE, self.clients)
+        self._reload_clients()
+        self._populate_run_checks()
+        self._refresh_combo()
+        self.cfg_client.set(cfg.display_name or cfg.client_id)
+        self._load_editor()
+        messagebox.showinfo("Đã thêm khách",
+                            f"Đã thêm '{cfg.display_name or cfg.client_id}' và lưu cấu hình.")
+
+    def _delete_client(self):
+        cid = self._current_cid()
+        if not cid:
+            return
+        name = self.clients[cid].display_name or cid
+        if not messagebox.askyesno(
+            "Xóa khách",
+            f"Xóa khách '{name}' khỏi danh sách?\n"
+            "(Chỉ xóa khỏi cấu hình; KHÔNG xóa file credentials/token trên đĩa.)",
+        ):
+            return
+        del self.clients[cid]
+        save_clients(CLIENTS_FILE, self.clients)
+        self._reload_clients()
+        self._populate_run_checks()
+        self.cfg_client.set("")
+        self._refresh_combo()
+        messagebox.showinfo("Đã xóa", f"Đã xóa '{name}'.")
 
 
 def main():
