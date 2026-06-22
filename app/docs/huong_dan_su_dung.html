@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hướng dẫn sử dụng — Tải Hóa Đơn Gmail</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    line-height: 1.65; color: #222; max-width: 880px;
+    margin: 0 auto; padding: 28px 22px 60px;
+  }
+  h1 { color: #0a6cc4; margin-bottom: 4px; }
+  h2 {
+    color: #0a6cc4; margin-top: 34px; padding-bottom: 6px;
+    border-bottom: 2px solid #e3eef8;
+  }
+  h3 { color: #185a8c; margin-top: 22px; }
+  .sub { color: #777; margin-top: 0; }
+  code, .kbd {
+    background: #eef3f8; border-radius: 4px; padding: 1px 6px;
+    font-family: Consolas, monospace; font-size: 0.92em;
+  }
+  .step { margin: 8px 0; }
+  .note {
+    background: #fff8e1; border-left: 4px solid #f5b301;
+    padding: 10px 14px; border-radius: 4px; margin: 14px 0;
+  }
+  .tip {
+    background: #e9f7ef; border-left: 4px solid #2ecc71;
+    padding: 10px 14px; border-radius: 4px; margin: 14px 0;
+  }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+  th, td { border: 1px solid #d6e0ea; padding: 7px 10px; text-align: left; }
+  th { background: #f0f6fc; }
+  ol li, ul li { margin: 5px 0; }
+  .pill {
+    display: inline-block; background: #0a6cc4; color: #fff;
+    border-radius: 12px; padding: 1px 10px; font-size: 0.85em;
+  }
+  footer { margin-top: 40px; color: #888; font-size: 0.9em;
+           border-top: 1px solid #e3eef8; padding-top: 12px; }
+</style>
+</head>
+<body>
+
+<h1>📖 Hướng dẫn sử dụng</h1>
+<p class="sub">Phần mềm <strong>Tải Hóa Đơn Gmail</strong> — tự động tải hóa đơn điện tử (PDF + XML) từ hộp thư Gmail và sắp xếp vào thư mục theo từng khách.</p>
+
+<h2>1. Phần mềm này làm gì?</h2>
+<ul>
+  <li>Quét hộp thư Gmail, tìm email hóa đơn điện tử của các nhà cung cấp.</li>
+  <li>Tải <strong>file đính kèm</strong>, hoặc tự vào link tra cứu của nhà mạng để tải <strong>PDF + XML</strong>.</li>
+  <li>Tự xếp file vào thư mục theo từng khách / từng người gửi mà bạn đã cấu hình.</li>
+</ul>
+
+<h2>2. Lần đầu sử dụng: thêm tài khoản Gmail</h2>
+<p>Vào thẻ <span class="pill">Cấu hình &amp; Bộ lọc</span>:</p>
+<ol>
+  <li class="step">Bấm <strong>➕ Thêm khách (Gmail)</strong>.</li>
+  <li class="step">Nhập <strong>Mã khách</strong> (không dấu, ví dụ <code>GP2</code>), <strong>Tên hiển thị</strong>, <strong>Email</strong>.</li>
+  <li class="step">Chọn <strong>file credentials .json</strong> (file Google cấp để cho phép đọc Gmail).</li>
+  <li class="step">Chọn <strong>Thư mục mặc định</strong> để lưu hóa đơn.</li>
+  <li class="step">Bấm <strong>Đăng nhập Google &amp; Lưu</strong> → cửa sổ trình duyệt mở ra, chọn đúng email và cấp quyền.</li>
+</ol>
+<div class="note">Lần đầu cần đăng nhập Google một lần. Sau đó phần mềm nhớ đăng nhập; khi nào hết hạn nó sẽ tự mở trình duyệt để bạn đăng nhập lại.</div>
+
+<h2>3. Cấu hình thư mục lưu &amp; bộ lọc</h2>
+<p>Trong thẻ <span class="pill">Cấu hình &amp; Bộ lọc</span>, chọn khách rồi thiết lập:</p>
+<ul>
+  <li><strong>Thư mục mặc định:</strong> nơi lưu hóa đơn cho email <em>chưa</em> có trong bộ lọc. Có thể dùng <code>{date}</code> = ngày hôm nay.</li>
+  <li><strong>Bộ lọc theo người gửi:</strong> bấm <strong>➕ Thêm</strong> để chỉ định "email người gửi này → lưu vào thư mục riêng". Bấm đúp một dòng để sửa nhanh.</li>
+</ul>
+<p>Xong nhớ bấm <strong>💾 Lưu cấu hình khách</strong>.</p>
+
+<h2>4. Tải hóa đơn</h2>
+<p>Vào thẻ <span class="pill">Tải hóa đơn</span>:</p>
+<ol>
+  <li class="step">Tích chọn <strong>một hoặc nhiều khách</strong> (có nút <em>Chọn tất cả / Bỏ chọn</em>).</li>
+  <li class="step">Chọn <strong>Chế độ tải</strong>:
+    <ul>
+      <li><strong>Theo cấu hình</strong> — dùng khoảng ngày &amp; điều kiện đã lưu cho khách.</li>
+      <li><strong>Tải tất cả</strong> — quét mọi email khớp.</li>
+      <li><strong>Chỉ chưa đọc</strong> — chỉ email chưa đọc.</li>
+    </ul>
+  </li>
+  <li class="step">(Tùy chọn) tích <strong>Ghi đè khoảng ngày</strong> rồi chọn <em>Từ ngày / Đến ngày</em>.</li>
+  <li class="step">Bấm <strong>🚀 Tải hóa đơn</strong>. Theo dõi tiến trình ở khung <strong>Nhật ký</strong> bên dưới.</li>
+</ol>
+<div class="tip">Muốn xem trước phần mềm sẽ tìm email theo điều kiện gì mà <em>chưa</em> tải thật? Bấm <strong>Xem QUERY (thử)</strong>.</div>
+
+<h2>5. Các nhà cung cấp hóa đơn được hỗ trợ</h2>
+<table>
+  <tr><th>Nhà cung cấp</th><th>Nhận diện qua</th></tr>
+  <tr><td>MISA</td><td>meinvoice.vn</td></tr>
+  <tr><td>BKAV</td><td>ehoadon.vn</td></tr>
+  <tr><td>Softdream (EasyInvoice)</td><td>easyinvoice.vn</td></tr>
+  <tr><td>Petrolimex</td><td>hóa đơn Petrolimex</td></tr>
+  <tr><td>Viettel / WIN</td><td>sinvoice / WIN</td></tr>
+  <tr><td>VETC</td><td>tracuuhoadon.vetc.com.vn</td></tr>
+  <tr><td>SmartSign (Vi Na)</td><td>smartsign.com.vn</td></tr>
+  <tr><td>iPOS</td><td>tracuuhoadon.ipos.vn</td></tr>
+  <tr><td>VNPT</td><td>vnpt-invoice.com.vn</td></tr>
+  <tr><td>Link trực tiếp / Fast e-Invoice</td><td>einvoice.fast.com.vn và link tải sẵn</td></tr>
+</table>
+<div class="note">Phần mềm <strong>ưu tiên file đính kèm</strong> trong email. Nếu email không đính kèm, nó sẽ tự vào link tra cứu của nhà mạng để tải PDF + XML. Nếu gặp nhà mạng mới chưa hỗ trợ, hãy gửi file <code>.eml</code> mẫu cho người quản lý phần mềm để bổ sung.</div>
+
+<h2>6. Cập nhật phần mềm</h2>
+<p>Phần mềm tự kiểm tra bản mới khi mở. Bạn cũng có thể bấm <strong>🔄 Kiểm tra cập nhật</strong> ở góc trên bên phải. Khi cập nhật, <strong>cấu hình và dữ liệu của bạn được giữ nguyên</strong>.</p>
+
+<h2>7. Xử lý sự cố thường gặp</h2>
+<table>
+  <tr><th>Hiện tượng</th><th>Cách xử lý</th></tr>
+  <tr><td>Hiện popup "Cần đăng nhập lại"</td><td>Trình duyệt sẽ mở — chọn đúng email và đăng nhập lại là xong.</td></tr>
+  <tr><td>MISA / SmartSign tải chậm hoặc mở Chrome</td><td>Hai nhà này cần mở trình duyệt Chrome (ẩn) để tải — chờ một chút, đừng tắt giữa chừng.</td></tr>
+  <tr><td>Một hóa đơn báo lỗi nhưng các hóa đơn khác vẫn tải</td><td>Bình thường — xem dòng lỗi trong Nhật ký; thường do link hết hạn hoặc nhà mạng đổi trang.</td></tr>
+  <tr><td>Không tìm thấy email nào</td><td>Kiểm tra lại khoảng ngày, chế độ tải, và đúng tài khoản Gmail.</td></tr>
+</table>
+
+<footer>
+  Tải Hóa Đơn Gmail — Hướng dẫn sử dụng. Bấm <span class="kbd">Ctrl</span> + <span class="kbd">P</span> để in ra giấy nếu cần.
+</footer>
+
+</body>
+</html>

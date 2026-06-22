@@ -199,6 +199,8 @@ class App:
         self.btn_dry.pack(side="left")
         self.btn_run = ttk.Button(act, text="🚀 Tải hóa đơn", command=self.on_run)
         self.btn_run.pack(side="left", padx=8)
+        ttk.Button(act, text="📖 Hướng dẫn sử dụng",
+                   command=self._open_guide).pack(side="left")
         self.status = ttk.Label(act, text="Sẵn sàng.", foreground="#0a7")
         self.status.pack(side="right")
 
@@ -314,6 +316,21 @@ class App:
     def log_msg(self, msg: str):
         self.log.insert(tk.END, msg + "\n")
         self.log.see(tk.END)
+
+    def _open_guide(self):
+        """Mở file hướng dẫn sử dụng (HTML) bằng trình duyệt mặc định."""
+        path = os.path.join(APP_DIR, "docs", "huong_dan_su_dung.html")
+        if not os.path.isfile(path):
+            messagebox.showwarning(
+                "Không tìm thấy hướng dẫn",
+                "Chưa có file hướng dẫn. Hãy bấm '🔄 Kiểm tra cập nhật' để tải bản mới nhất.",
+            )
+            return
+        try:
+            os.startfile(path)  # Windows: mở bằng app mặc định
+        except Exception:
+            import webbrowser
+            webbrowser.open(f"file:///{path.replace(os.sep, '/')}")
 
     def on_dry_run(self):
         ids = self._selected_ids()
