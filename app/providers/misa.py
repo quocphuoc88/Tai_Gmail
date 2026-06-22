@@ -24,9 +24,13 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-# Đặt True nếu muốn chạy ẩn (không hiện cửa sổ Chrome).
-# Lưu ý: một số trang chặn headless, nếu lỗi thì để False.
-HEADLESS = False
+# Chế độ hiển thị cửa sổ Chrome khi tải MISA:
+#   "hidden"   : cửa sổ THẬT nhưng đẩy ra NGOÀI màn hình -> không thấy, chạy y như
+#                cũ nên KHÔNG sợ MISA chặn. (MẶC ĐỊNH - khuyên dùng)
+#   "headless" : ẩn HOÀN TOÀN (không hiện cả trên taskbar), nhanh hơn; nhưng MISA
+#                CÓ THỂ chặn -> nếu tải lỗi/timeout thì đổi lại "hidden".
+#   "visible"  : hiện cửa sổ như trước (để gỡ lỗi khi cần xem Chrome làm gì).
+CHROME_MODE = "hidden"
 
 PAGE_TIMEOUT = 30      # giây chờ trang/nút xuất hiện
 DOWNLOAD_TIMEOUT = 60  # giây chờ tải file
@@ -242,9 +246,20 @@ def download_misa_invoice(email_text, save_dir):
     # ==========================================
     chrome_options = Options()
 
-    if HEADLESS:
+    # Bớt log rác của Chrome/driver ra console.
+    chrome_options.add_argument("--log-level=3")
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])
+
+    if CHROME_MODE == "headless":
+        # Ẩn hoàn toàn. --headless=new vẫn cho phép tải file qua prefs bên dưới.
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--window-size=1280,900")
+        chrome_options.add_argument("--disable-gpu")
+    elif CHROME_MODE == "hidden":
+        # Cửa sổ thật nhưng nằm ngoài màn hình -> mở thẳng ở vị trí âm, không chớp.
+        chrome_options.add_argument("--window-position=-32000,-32000")
+        chrome_options.add_argument("--window-size=1280,900")
+    # CHROME_MODE == "visible": không thêm gì, cửa sổ hiện như cũ.
 
     prefs = {
         "download.default_directory": save_dir,
@@ -257,6 +272,13 @@ def download_misa_invoice(email_text, save_dir):
     chrome_options.add_experimental_option("prefs", prefs)
 
     driver = webdriver.Chrome(options=chrome_options)
+
+    # Chế độ hidden: thu nhỏ luôn cho chắc (phòng khi Chrome ghim lại vị trí âm).
+    if CHROME_MODE == "hidden":
+        try:
+            driver.minimize_window()
+        except Exception:
+            pass
 
     saved_any = False
 
