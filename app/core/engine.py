@@ -41,6 +41,7 @@ from providers.direct_link import (
 from providers.petrolimex import is_petrolimex_email, download_petrolimex_invoice
 from providers.win import is_win_email, download_win_invoice
 from providers.vetc import is_vetc_email, download_vetc_invoice
+from providers.smartsign import is_smartsign_email, download_smartsign_invoice
 
 
 # =========================================================
@@ -64,6 +65,7 @@ PROVIDERS = [
     ("PETROLIMEX", is_petrolimex_email, download_petrolimex_invoice),
     ("WIN", is_win_email, download_win_invoice),
     ("VETC", is_vetc_email, download_vetc_invoice),
+    ("SMARTSIGN", is_smartsign_email, download_smartsign_invoice),
     ("DIRECT", is_direct_link_email, download_direct_invoice),
 ]
 
