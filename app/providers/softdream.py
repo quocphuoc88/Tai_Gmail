@@ -64,13 +64,13 @@ def is_softdream_email(subject, from_email, body_text):
     b = (body_text or "").lower()
 
     # Email có khi được KHÁCH forward -> From là gmail của khách, không phải
-    # softdreams.vn. Khi đó nhận diện theo dấu hiệu trong NỘI DUNG.
+    # softdreams.vn. Khi đó nhận diện theo DOMAIN đặc trưng của Softdream/EasyInvoice.
+    # KHÔNG dùng marker đường dẫn chung như "/invoice/viewfromemail" vì nhiều
+    # nhà cung cấp khác (vd IPOS) cũng dùng đường dẫn đó -> nhận nhầm.
     markers = (
-        "softdreams",                   # nguồn gốc trong header forward
-        "tracuu.easyinvoice.vn",        # domain trang tra cứu thật
-        "/invoice/viewfromemail",       # link xem hóa đơn
-        "/invoice/downloadinvpdf",      # link tải PDF
-        "easyinvoice.com.vn/invoice/",  # giữ marker cũ
+        "softdreams",          # nguồn gốc trong header forward
+        "easyinvoice.vn",      # tracuu.easyinvoice.vn ...
+        "easyinvoice.com.vn",  # easy-pit / sản phẩm EasyInvoice
     )
     return any(mk in b for mk in markers)
 
