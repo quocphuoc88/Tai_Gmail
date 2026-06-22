@@ -71,7 +71,7 @@ T_FOLDER = "Thư mục con (dưới thư mục mặc định)"
 class App:
     def __init__(self, root: tk.Tk):
         self.root = root
-        root.title("Tải Hóa Đơn Gmail — Hợp nhất")
+        root.title("Tải hóa đơn Gmail - By Trần Quốc Phước - 0907.012.012")
         root.geometry("820x680")
         root.minsize(720, 600)
         try:
@@ -111,7 +111,8 @@ class App:
         from core.updater import local_version
         bar = ttk.Frame(root, padding=(10, 6, 10, 0))
         bar.pack(fill="x")
-        ttk.Label(bar, text="Tải Hóa Đơn Gmail", font=("Segoe UI", 11, "bold")).pack(side="left")
+        ttk.Label(bar, text="Tải hóa đơn Gmail - By Trần Quốc Phước - 0907.012.012",
+                  font=("Segoe UI", 11, "bold")).pack(side="left")
         self.ver_label = ttk.Label(bar, text=f"  v{local_version()}", foreground="#777")
         self.ver_label.pack(side="left")
         ttk.Button(bar, text="🔄 Kiểm tra cập nhật",
@@ -208,7 +209,7 @@ class App:
 
         act = ttk.Frame(main)
         act.pack(fill="x", **pad)
-        self.btn_dry = ttk.Button(act, text="Xem QUERY (thử)", command=self.on_dry_run)
+        self.btn_dry = ttk.Button(act, text="Xem cấu hình tải thử", command=self.on_dry_run)
         self.btn_dry.pack(side="left")
         self.btn_run = ttk.Button(act, text="🚀 Tải hóa đơn", command=self.on_run)
         self.btn_run.pack(side="left", padx=8)
