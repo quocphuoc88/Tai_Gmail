@@ -19,9 +19,23 @@ import tkinter as tk
 from datetime import datetime
 from tkinter import ttk, messagebox, scrolledtext, filedialog
 
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
+# Khi đóng gói bằng PyInstaller (.exe), __file__ nằm trong thư mục tạm _MEIPASS.
+# Dữ liệu người dùng (clients.json, token_*, credentials_*, gui_state.json) phải
+# nằm CẠNH FILE .EXE để giữ được sau mỗi lần chạy.
+FROZEN = getattr(sys, "frozen", False)
+if FROZEN:
+    APP_DIR = os.path.dirname(sys.executable)
+else:
+    APP_DIR = os.path.dirname(os.path.abspath(__file__))
 if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
+# token_*/credentials_* dùng đường dẫn tương đối -> đặt thư mục làm việc tại APP_DIR.
+try:
+    os.chdir(APP_DIR)
+except OSError:
+    pass
+# Tài nguyên CHỈ-ĐỌC đóng gói kèm (docs, version.txt): khi .exe nằm ở _MEIPASS.
+RESOURCE_DIR = getattr(sys, "_MEIPASS", APP_DIR)
 
 from core.config import load_clients, save_clients, ClientConfig  # noqa: E402
 
@@ -115,7 +129,12 @@ class App:
                                     "app\\update_config.json (xem hướng dẫn)."))
                 return
             has, rv, lv = check_update()
-            if has:
+            if has and FROZEN:
+                # Bản .exe không tự ghi đè mã nguồn -> chỉ thông báo.
+                self.log_q.put(("__INFO__", "Có bản mới",
+                                f"Đã có bản mới v{rv} (bạn đang dùng v{lv}).\n"
+                                "Vui lòng liên hệ người quản lý phần mềm để nhận bản cập nhật."))
+            elif has:
                 self.log_q.put(("__ASK_UPDATE__", rv, lv))
             elif manual:
                 self.log_q.put(("__INFO__", "Cập nhật",
@@ -319,7 +338,7 @@ class App:
 
     def _open_guide(self):
         """Mở file hướng dẫn sử dụng (HTML) bằng trình duyệt mặc định."""
-        path = os.path.join(APP_DIR, "docs", "huong_dan_su_dung.html")
+        path = os.path.join(RESOURCE_DIR, "docs", "huong_dan_su_dung.html")
         if not os.path.isfile(path):
             messagebox.showwarning(
                 "Không tìm thấy hướng dẫn",
