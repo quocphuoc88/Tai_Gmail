@@ -33,7 +33,11 @@ from core.config import ClientConfig, SCOPES
 from providers.misa import download_misa_invoice
 from providers.bkav import is_bkav_email, download_bkav_invoice
 from providers.softdream import is_softdream_email, download_softdream_invoice
-from providers.direct_link import is_direct_link_email, download_direct_invoice
+from providers.direct_link import (
+    is_direct_link_email,
+    download_direct_invoice,
+    folder_hint as direct_folder_hint,
+)
 from providers.petrolimex import is_petrolimex_email, download_petrolimex_invoice
 from providers.win import is_win_email, download_win_invoice
 
@@ -60,6 +64,12 @@ PROVIDERS = [
     ("WIN", is_win_email, download_win_invoice),
     ("DIRECT", is_direct_link_email, download_direct_invoice),
 ]
+
+# Provider có thể GỢI Ý thư mục theo nội dung (vd Fast/EasyInvoice: theo công ty
+# phát hành), dùng khi đang lưu theo người gửi mặc định.
+PROVIDER_FOLDER_HINTS = {
+    "DIRECT": direct_folder_hint,
+}
 
 
 # =========================================================
@@ -375,6 +385,7 @@ def run(cfg: ClientConfig, logger=print, notify=None) -> int:
 
         # Chọn nơi lưu
         base_dir = choose_base_dir(from_email, cfg)
+        folder_from_rules = None
         if base_dir:
             save_dir = Path(base_dir)
         elif cfg.flat_save:
@@ -385,6 +396,9 @@ def run(cfg: ClientConfig, logger=print, notify=None) -> int:
             folder_name = folder_from_rules or normalize_sender_folder(from_email)
             save_dir = Path(cfg.base_save_dir) / folder_name
         save_dir.mkdir(parents=True, exist_ok=True)
+        # Chỉ xếp theo nhà phát hành khi đang lưu theo NGƯỜI GỬI mặc định
+        # (không có path_rule riêng, không flat_save, không khớp folder_rule).
+        use_issuer_hint = (base_dir is None) and (not cfg.flat_save) and (folder_from_rules is None)
 
         # Ưu tiên 1: file đính kèm thật
         real_atts = [p for p in walk_parts(payload) if is_real_attachment(p)]
@@ -426,11 +440,27 @@ def run(cfg: ClientConfig, logger=print, notify=None) -> int:
             if not is_match(subject, from_email, body_text):
                 continue
             logger(f"[{cfg.client_id}] EMAIL {prov_name}: {subject}")
+
+            # Xếp theo nhà phát hành nếu provider có gợi ý (vd Fast -> KAMEREO).
+            prov_save_dir = save_dir
+            if use_issuer_hint:
+                hint_fn = PROVIDER_FOLDER_HINTS.get(prov_name)
+                hint = None
+                if hint_fn:
+                    try:
+                        hint = hint_fn(subject, from_email, body_text)
+                    except Exception:
+                        hint = None
+                if hint:
+                    prov_save_dir = Path(cfg.base_save_dir) / hint
+                    prov_save_dir.mkdir(parents=True, exist_ok=True)
+                    logger(f"[{cfg.client_id}]   -> xếp theo nhà phát hành: {hint}")
+
             # Chỉ truyền name_prefix cho provider nào hỗ trợ (vd direct_link).
             extra = {}
             if name_prefix and "name_prefix" in inspect.signature(download_fn).parameters:
                 extra["name_prefix"] = name_prefix
-            ok = download_fn(body_text, str(save_dir), **extra)
+            ok = download_fn(body_text, str(prov_save_dir), **extra)
             if ok:
                 total_saved += 1
                 service.users().messages().modify(

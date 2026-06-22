@@ -18,6 +18,7 @@ Interface khớp với PROVIDERS trong gmail_sync_v3:
 import os
 import re
 import logging
+import unicodedata
 from html import unescape
 from pathlib import Path
 
@@ -184,6 +185,47 @@ def _download(url, save_path: Path, timeout=30, honor_content_disposition=True):
 
         logger.error("Lỗi tải %s: %s", url, e)
         return None
+
+
+# ==========================================
+# TÊN CÔNG TY PHÁT HÀNH (để xếp thư mục theo nhà cung cấp)
+# Hóa đơn Fast/EasyInvoice đều gửi từ 1 địa chỉ chung -> tách theo công ty
+# phát hành ghi trong nội dung email.
+# ==========================================
+def _strip_accents(s):
+    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
+
+
+# Bỏ tiền tố loại hình doanh nghiệp để lấy tên đặc trưng (KAMEREO, ...)
+_ISSUER_PREFIX = re.compile(
+    r"^C[ÔO]NG\s*TY\s*(?:TNHH(?:\s*MTV)?|C[ỔO]\s*PH[ẦA]N|CP|TM(?:\s*DV)?|SX(?:\s*TM)?)?\s*",
+    re.IGNORECASE,
+)
+
+
+def extract_issuer_folder(body_text):
+    """Tên thư mục theo công ty PHÁT HÀNH hóa đơn (vd 'KAMEREO'); None nếu không thấy."""
+    text = _strip_html(body_text or "")
+
+    # 1) "CÔNG TY ... xin gửi cho Quý khách" (câu mở đầu)
+    m = re.search(r"(C[ÔO]NG\s*TY\s+[^.\n<]{2,70}?)\s+xin\s+g[ửu]i", text, re.IGNORECASE)
+    if not m:
+        # 2) chữ ký cuối: "Trân trọng kính chào ! CÔNG TY ..."
+        m = re.search(r"k[íi]nh\s*ch[àa]o\s*[!.]?\s*(C[ÔO]NG\s*TY\s+[^.\n<]{2,70})", text, re.IGNORECASE)
+    if not m:
+        return None
+
+    name = m.group(1).strip()
+    core = _ISSUER_PREFIX.sub("", name).strip() or name
+    folder = _strip_accents(core).upper()
+    folder = re.sub(r'[\\/:*?"<>|]', " ", folder)
+    folder = re.sub(r"\s+", " ", folder).strip()
+    return folder[:60] or None
+
+
+def folder_hint(subject, from_email, body_text):
+    """Gợi ý thư mục theo nhà phát hành (engine dùng khi lưu theo người gửi)."""
+    return extract_issuer_folder(body_text)
 
 
 # ==========================================
