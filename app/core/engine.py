@@ -40,6 +40,7 @@ from providers.direct_link import (
 )
 from providers.petrolimex import is_petrolimex_email, download_petrolimex_invoice
 from providers.win import is_win_email, download_win_invoice
+from providers.vetc import is_vetc_email, download_vetc_invoice
 
 
 # =========================================================
@@ -62,6 +63,7 @@ PROVIDERS = [
     ("SOFTDREAM", is_softdream_email, download_softdream_invoice),
     ("PETROLIMEX", is_petrolimex_email, download_petrolimex_invoice),
     ("WIN", is_win_email, download_win_invoice),
+    ("VETC", is_vetc_email, download_vetc_invoice),
     ("DIRECT", is_direct_link_email, download_direct_invoice),
 ]
 
