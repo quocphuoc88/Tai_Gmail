@@ -30,7 +30,7 @@ PY = sys.executable
 COPY_DIRS = ["core", "providers", "docs"]
 # File lẻ trong app/ được copy.
 COPY_FILES = ["gui.py", "version.txt", "update_config.json",
-              "clients.example.json", "requirements.txt"]
+              "clients.example.json", "requirements.txt", "icon.ico"]
 # KHÔNG copy (bí mật / dữ liệu riêng / rác).
 SKIP_NAMES = {"__pycache__"}
 

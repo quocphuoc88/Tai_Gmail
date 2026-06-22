@@ -74,6 +74,10 @@ class App:
         root.title("Tải Hóa Đơn Gmail — Hợp nhất")
         root.geometry("820x680")
         root.minsize(720, 600)
+        try:
+            root.iconbitmap(os.path.join(RESOURCE_DIR, "icon.ico"))
+        except Exception:
+            pass
 
         self.log_q: "queue.Queue[str]" = queue.Queue()
         # Đưa mọi print() (providers, traceback) vào Nhật ký, tránh treo dưới pythonw.
