@@ -23,6 +23,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import WebDriverException
 
 # Chế độ hiển thị cửa sổ Chrome khi tải MISA:
 #   "hidden"   : cửa sổ THẬT nhưng đẩy ra NGOÀI màn hình -> không thấy, chạy y như
@@ -224,6 +225,85 @@ def _click_download_item(driver, css_list, text_label, timeout=10):
 
 
 # ==========================================
+# CHROME DÙNG CHUNG (mở 1 lần, tái dùng cho mọi hóa đơn MISA trong phiên)
+# -> không bật/tắt Chrome mỗi hóa đơn nữa: nhanh hơn, gọn hơn.
+# ==========================================
+_DRIVER = None
+
+
+def _build_options():
+    opt = Options()
+    opt.add_argument("--log-level=3")
+    opt.add_experimental_option("excludeSwitches", ["enable-logging"])
+
+    if CHROME_MODE == "headless":
+        opt.add_argument("--headless=new")
+        opt.add_argument("--window-size=1280,900")
+        opt.add_argument("--disable-gpu")
+    elif CHROME_MODE == "hidden":
+        opt.add_argument("--window-position=-32000,-32000")
+        opt.add_argument("--window-size=1280,900")
+    # "visible": để nguyên.
+
+    # Thư mục tải sẽ đặt LẠI theo từng hóa đơn qua CDP (_set_download_dir).
+    opt.add_experimental_option("prefs", {
+        "download.prompt_for_download": False,
+        "download.directory_upgrade": True,
+        "plugins.always_open_pdf_externally": True,
+        "safebrowsing.enabled": True,
+    })
+    return opt
+
+
+def _get_driver():
+    """Trả về Chrome dùng chung; tạo mới nếu chưa có hoặc đã chết."""
+    global _DRIVER
+    if _DRIVER is not None:
+        try:
+            _ = _DRIVER.current_url   # còn sống?
+            return _DRIVER
+        except Exception:
+            try:
+                _DRIVER.quit()
+            except Exception:
+                pass
+            _DRIVER = None
+
+    _DRIVER = webdriver.Chrome(options=_build_options())
+    if CHROME_MODE == "hidden":
+        try:
+            _DRIVER.minimize_window()
+        except Exception:
+            pass
+    return _DRIVER
+
+
+def _set_download_dir(driver, save_dir):
+    """Đổi thư mục tải cho hóa đơn hiện tại (vì Chrome được dùng chung)."""
+    try:
+        driver.execute_cdp_cmd(
+            "Page.setDownloadBehavior",
+            {"behavior": "allow", "downloadPath": save_dir},
+        )
+    except Exception as e:
+        print("MISA: không đổi được thư mục tải qua CDP:", e)
+
+
+def close_driver():
+    """Đóng Chrome dùng chung. Engine gọi khi kết thúc một phiên tải.
+
+    An toàn khi gọi nhiều lần / khi chưa từng mở Chrome (no-op).
+    """
+    global _DRIVER
+    if _DRIVER is not None:
+        try:
+            _DRIVER.quit()
+        except Exception:
+            pass
+        _DRIVER = None
+
+
+# ==========================================
 # HÀM CHÍNH TẢI HÓA ĐƠN MISA
 # ==========================================
 def download_misa_invoice(email_text, save_dir):
@@ -241,44 +321,10 @@ def download_misa_invoice(email_text, save_dir):
 
     os.makedirs(save_dir, exist_ok=True)
 
-    # ==========================================
-    # CHROME
-    # ==========================================
-    chrome_options = Options()
-
-    # Bớt log rác của Chrome/driver ra console.
-    chrome_options.add_argument("--log-level=3")
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-logging"])
-
-    if CHROME_MODE == "headless":
-        # Ẩn hoàn toàn. --headless=new vẫn cho phép tải file qua prefs bên dưới.
-        chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--window-size=1280,900")
-        chrome_options.add_argument("--disable-gpu")
-    elif CHROME_MODE == "hidden":
-        # Cửa sổ thật nhưng nằm ngoài màn hình -> mở thẳng ở vị trí âm, không chớp.
-        chrome_options.add_argument("--window-position=-32000,-32000")
-        chrome_options.add_argument("--window-size=1280,900")
-    # CHROME_MODE == "visible": không thêm gì, cửa sổ hiện như cũ.
-
-    prefs = {
-        "download.default_directory": save_dir,
-        "download.prompt_for_download": False,
-        "download.directory_upgrade": True,
-        "plugins.always_open_pdf_externally": True,
-        "safebrowsing.enabled": True
-    }
-
-    chrome_options.add_experimental_option("prefs", prefs)
-
-    driver = webdriver.Chrome(options=chrome_options)
-
-    # Chế độ hidden: thu nhỏ luôn cho chắc (phòng khi Chrome ghim lại vị trí âm).
-    if CHROME_MODE == "hidden":
-        try:
-            driver.minimize_window()
-        except Exception:
-            pass
+    # Dùng Chrome CHUNG (mở 1 lần, tái dùng cho mọi hóa đơn trong phiên),
+    # và đặt thư mục tải theo đúng hóa đơn này.
+    driver = _get_driver()
+    _set_download_dir(driver, save_dir)
 
     saved_any = False
 
@@ -342,12 +388,13 @@ def download_misa_invoice(email_text, save_dir):
 
         return saved_any
 
-    except Exception as e:
-
-        print("MISA ERROR:", e)
-
+    except WebDriverException as e:
+        # Lỗi cấp trình duyệt -> đóng Chrome chung để lần sau tạo lại.
+        print("MISA ERROR (driver):", e)
+        close_driver()
         return saved_any
 
-    finally:
-
-        driver.quit()
+    except Exception as e:
+        print("MISA ERROR:", e)
+        return saved_any
+    # KHÔNG quit ở đây: giữ Chrome để tái dùng. engine gọi close_driver() khi xong phiên.

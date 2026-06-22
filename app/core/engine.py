@@ -397,11 +397,26 @@ def run(cfg: ClientConfig, logger=print) -> int:
     return total_saved
 
 
-def run_with_retry(cfg: ClientConfig, logger=print) -> int:
-    """Như run() nhưng nếu token chết GIỮA CHỪNG -> xóa token, chạy lại 1 lần."""
+def _cleanup_selenium(logger=print):
+    """Đóng các trình duyệt dùng chung (vd Chrome của MISA) khi xong phiên."""
     try:
-        return run(cfg, logger)
-    except RefreshError:
-        logger(f"[{cfg.client_id}] Token hết hạn giữa phiên -> xóa, đăng nhập lại...")
-        _xoa_token(cfg)
-        return run(cfg, logger)
+        from providers import misa
+        misa.close_driver()
+    except Exception as e:
+        logger(f"Dọn Chrome MISA lỗi: {e}")
+
+
+def run_with_retry(cfg: ClientConfig, logger=print) -> int:
+    """Như run() nhưng nếu token chết GIỮA CHỪNG -> xóa token, chạy lại 1 lần.
+
+    Luôn đóng Chrome dùng chung của MISA khi kết thúc (kể cả khi lỗi).
+    """
+    try:
+        try:
+            return run(cfg, logger)
+        except RefreshError:
+            logger(f"[{cfg.client_id}] Token hết hạn giữa phiên -> xóa, đăng nhập lại...")
+            _xoa_token(cfg)
+            return run(cfg, logger)
+    finally:
+        _cleanup_selenium(logger)
