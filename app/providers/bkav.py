@@ -35,6 +35,10 @@ HEADERS = {
 # Mã tra cứu trong link rút gọn: tracuu.ehoadon.vn/NSTXA3LRDNC
 TRACUU_LINK_PATTERN = r"tracuu\.ehoadon\.vn/([A-Za-z0-9]+)"
 
+# Trang TCHD mới (tchd.ehoadon.vn) nhúng lệnh ViewInvoice('<GUID>') để mở
+# trang chi tiết /Lookup?InvoiceGUID=<GUID>. Lấy GUID từ đây.
+VIEW_INVOICE_GUID_PATTERN = r"ViewInvoice\(['\"]([0-9a-fA-F\-]{36})['\"]\)"
+
 
 # =========================================================
 # 1. NHẬN DIỆN EMAIL BKAV
@@ -91,11 +95,45 @@ def _lay_hidden_field(html: str, field_name: str) -> str:
 
 
 def _lay_link_pdf(html: str) -> str | None:
+    # Trang chi tiết mới: onclick="DownloadFile('C2/6T/...DPH.pdf',1);"
+    m = re.search(r"DownloadFile\(['\"]([^'\"]+\.pdf)['\"]", html, re.IGNORECASE)
+    if m:
+        return m.group(1)
+    # Trang cũ: link DownloadFile?FilePath=...
     m = re.search(r"DownloadFile\?FilePath=([^&\"'<>\s]+)", html, re.IGNORECASE)
     if m:
         return unquote(m.group(1))
+    # Object viewer nhúng sẵn: <object data="/Invoice_View/.../...DPH.pdf?v=...">
+    m = re.search(r'data="(/Invoice_View/[^"?]+\.pdf)', html, re.IGNORECASE)
+    if m:
+        return m.group(1)
     m = re.search(r"[\"']([^\"']+\.pdf)[\"']", html, re.IGNORECASE)
     return m.group(1) if m else None
+
+
+def _lay_trang_chi_tiet(
+    session: requests.Session,
+    resp: requests.Response,
+    timeout: int,
+) -> tuple[str, str]:
+    """Từ trang tra cứu (TCHD mới hoặc trang cũ) trả về (html, url) của trang
+    CHI TIẾT hóa đơn - nơi chứa link tải PDF/XML.
+
+    Trang mới tchd.ehoadon.vn chỉ là form + lệnh ViewInvoice('<GUID>'); hóa đơn
+    thật nằm ở /Lookup?InvoiceGUID=<GUID>. Trang cũ thì chi tiết nằm ngay đây.
+    """
+    html = resp.text
+    guid_match = re.search(VIEW_INVOICE_GUID_PATTERN, html)
+    if not guid_match:
+        return html, resp.url
+
+    guid = guid_match.group(1)
+    base = _base_url(resp.url)
+    detail_url = f"{base}/Lookup?InvoiceGUID={guid}&ViewATF="
+    logger.info("BKAV - mở trang chi tiết: %s", detail_url)
+    r = session.get(detail_url, timeout=timeout)
+    r.raise_for_status()
+    return r.text, r.url
 
 
 def _ten_file_tu_response(resp: requests.Response, mac_dinh: str) -> str:
@@ -131,18 +169,22 @@ def tai_hoa_don_bkav(
     resp = session.get(link_tra_cuu, timeout=timeout, allow_redirects=True)
     resp.raise_for_status()
 
-    # Link tracuu.ehoadon.vn/<MA> sẽ redirect sang trang chi tiết
-    # -> dùng URL CUỐI CÙNG cho postback và link tải
-    final_url = resp.url
+    # tracuu.ehoadon.vn/<MA> redirect sang trang TCHD; trang chi tiết hóa đơn
+    # (chứa link tải) có thể nằm ở /Lookup?InvoiceGUID=<GUID>.
+    html, final_url = _lay_trang_chi_tiet(session, resp, timeout)
     base = _base_url(final_url)
-    html = resp.text
 
     if loai_file == "pdf":
         link_pdf = _lay_link_pdf(html)
         if not link_pdf:
             raise RuntimeError("Không tìm thấy link PDF trong trang tra cứu.")
 
-        file_url = f"{base}/DownloadFile?FilePath={link_pdf}&BFType=1"
+        # Object viewer cho đường dẫn tuyệt đối (/Invoice_View/...): tải thẳng.
+        # Còn lại là đường dẫn tương đối cho endpoint DownloadFile.
+        if link_pdf.startswith("/"):
+            file_url = f"{base}{link_pdf}"
+        else:
+            file_url = f"{base}/DownloadFile?FilePath={link_pdf}&BFType=1"
         ten_mac_dinh = link_pdf.rsplit("/", 1)[-1] or "hoadon_bkav.pdf"
 
         logger.info("Tải PDF: %s", file_url)
