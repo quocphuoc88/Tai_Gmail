@@ -32,6 +32,24 @@ except Exception:
 
 _DONE = "__DONE__"
 
+
+class _QueueWriter:
+    """Thay sys.stdout/stderr: mọi print() (kể cả từ providers) đổ vào Nhật ký.
+
+    Quan trọng khi chạy bằng pythonw.exe (không có console): nếu không thay,
+    sys.stdout là None và print() trong providers sẽ làm treo luồng tải.
+    """
+
+    def __init__(self, q: "queue.Queue[str]"):
+        self.q = q
+
+    def write(self, s):
+        if s and s.strip():
+            self.q.put(s.rstrip("\n"))
+
+    def flush(self):
+        pass
+
 # Nhãn loại bộ lọc
 T_PATH = "Thư mục riêng (đường dẫn đầy đủ)"
 T_FOLDER = "Thư mục con (dưới thư mục mặc định)"
@@ -45,6 +63,9 @@ class App:
         root.minsize(720, 600)
 
         self.log_q: "queue.Queue[str]" = queue.Queue()
+        # Đưa mọi print() (providers, traceback) vào Nhật ký, tránh treo dưới pythonw.
+        sys.stdout = _QueueWriter(self.log_q)
+        sys.stderr = _QueueWriter(self.log_q)
         self.worker: threading.Thread | None = None
         self.run_vars: dict[str, tk.BooleanVar] = {}
         self.run_checks: dict[str, ttk.Checkbutton] = {}

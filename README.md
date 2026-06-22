@@ -69,6 +69,11 @@ Mọi cấu hình từng khách nằm trong `app/clients.json`. **Thêm khách m
 
 ## Giao diện desktop
 
+**Cách dễ nhất:** bấm đúp **`Tai_Hoa_Don_Gmail.bat`** ở thư mục gốc dự án,
+hoặc dùng lối tắt **"Tai Hoa Don Gmail"** trên Desktop (đã tạo sẵn).
+
+Hoặc chạy bằng lệnh:
+
 ```powershell
 cd app
 ..\.venv\Scripts\pythonw.exe gui.py
