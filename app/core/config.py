@@ -18,10 +18,12 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 class ClientConfig:
     """Cấu hình tải hóa đơn cho MỘT khách hàng."""
 
-    client_id: str                       # mã khách, vd "GPHUC", "GPHD", "157"
+    client_id: str                       # mã khách (khóa nội bộ), vd "GPHUC"
     credentials_file: str                # OAuth client của Google (bí mật)
     token_file: str                      # token đã cấp quyền (bí mật)
     root_dir: str                        # thư mục gốc lưu; hỗ trợ token {date}
+    display_name: str = ""               # tên hiển thị trên giao diện, vd "Gia Phúc"
+    email: str = ""                      # địa chỉ Gmail của tài khoản (để hiển thị)
     date_from: str = ""                  # "YYYY-MM-DD" hoặc "" = không giới hạn
     date_to: str = ""                    # "YYYY-MM-DD" hoặc ""
     sender: str = ""                     # lọc người gửi (cách nhau bởi dấu cách)
@@ -58,6 +60,35 @@ class ClientConfig:
             .replace("{dateto}", self.date_to)
         )
 
+    def to_dict(self) -> Dict:
+        """Chuyển về dict để ghi lại clients.json (giữ mọi trường có ý nghĩa)."""
+        d: Dict = {
+            "display_name": self.display_name or self.client_id,
+            "email": self.email,
+            "credentials_file": self.credentials_file,
+            "token_file": self.token_file,
+            "root_dir": self.root_dir,
+            "date_from": self.date_from,
+            "date_to": self.date_to,
+            "sender": self.sender,
+            "subject_keyword": self.subject_keyword,
+            "download_all": self.download_all,
+        }
+        # Chỉ ghi tùy chọn nâng cao khi khác mặc định (giữ file gọn).
+        if self.extra_query:
+            d["extra_query"] = self.extra_query
+        if not self.use_date_subfolder:
+            d["use_date_subfolder"] = False
+        if self.flat_save:
+            d["flat_save"] = True
+        d["path_rules"] = self.path_rules
+        d["folder_rules"] = self.folder_rules
+        if self.brand_rules:
+            d["brand_rules"] = self.brand_rules
+        if self.brand_default:
+            d["brand_default"] = self.brand_default
+        return d
+
     @property
     def base_save_dir(self) -> str:
         """Thư mục lưu mặc định.
@@ -91,6 +122,8 @@ def load_clients(json_path: str) -> Dict[str, ClientConfig]:
             credentials_file=data["credentials_file"],
             token_file=data["token_file"],
             root_dir=data["root_dir"],
+            display_name=data.get("display_name") or client_id,
+            email=data.get("email", ""),
             date_from=data.get("date_from", ""),
             date_to=data.get("date_to", ""),
             sender=data.get("sender", ""),
@@ -105,6 +138,14 @@ def load_clients(json_path: str) -> Dict[str, ClientConfig]:
             brand_default=data.get("brand_default", ""),
         )
     return clients
+
+
+def save_clients(json_path: str, clients: Dict[str, ClientConfig]) -> None:
+    """Ghi toàn bộ khách trở lại clients.json (giữ tiếng Việt, thụt lề 2)."""
+    data = {cid: cfg.to_dict() for cid, cfg in clients.items()}
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+        f.write("\n")
 
 
 def load_client(json_path: str, client_id: str) -> ClientConfig:
