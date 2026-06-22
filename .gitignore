@@ -25,6 +25,12 @@ token_*.json
 # Giữ ở máy người dùng, KHÔNG đẩy lên GitHub. (clients.example.json là file mẫu, vẫn track.)
 clients.json
 
+# Backup/scratch cũ có chứa PII khách (email, đường dẫn công ty) -> giữ trên đĩa,
+# KHÔNG đẩy lên GitHub.
+/app/legacy/
+/app/emails.txt
+/app/NHAP.py
+
 # ===== Dữ liệu / kết quả sinh ra =====
 download_log.csv
 *.xlsx
