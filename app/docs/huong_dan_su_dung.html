@@ -60,7 +60,8 @@
 <ol>
   <li class="step">Bấm <strong>➕ Thêm khách (Gmail)</strong>.</li>
   <li class="step">Nhập <strong>Mã khách</strong> (không dấu, ví dụ <code>GP2</code>), <strong>Tên hiển thị</strong>, <strong>Email</strong>.</li>
-  <li class="step">Chọn <strong>file credentials .json</strong> (file Google cấp để cho phép đọc Gmail).</li>
+  <li class="step">Chọn <strong>file credentials .json</strong> (file Google cấp để cho phép đọc Gmail).
+      <br><span style="color:#0a6cc4">Chưa có file này?</span> Xem <a href="#tao-credentials"><strong>Phụ lục: Cách tạo file credentials .json</strong></a> ở cuối hướng dẫn.</li>
   <li class="step">Chọn <strong>Thư mục mặc định</strong> để lưu hóa đơn.</li>
   <li class="step">Bấm <strong>Đăng nhập Google &amp; Lưu</strong> → cửa sổ trình duyệt mở ra, chọn đúng email và cấp quyền.</li>
 </ol>
@@ -117,6 +118,57 @@
   <tr><td>Một hóa đơn báo lỗi nhưng các hóa đơn khác vẫn tải</td><td>Bình thường — xem dòng lỗi trong Nhật ký; thường do link hết hạn hoặc nhà mạng đổi trang.</td></tr>
   <tr><td>Không tìm thấy email nào</td><td>Kiểm tra lại khoảng ngày, chế độ tải, và đúng tài khoản Gmail.</td></tr>
 </table>
+
+<h2 id="tao-credentials">📎 Phụ lục: Cách tạo file credentials .json từ Google</h2>
+<p>File <code>credentials.json</code> là "giấy phép" để phần mềm được quyền đọc Gmail của bạn. Bạn chỉ cần tạo <strong>một lần</strong>, hoàn toàn <strong>miễn phí</strong>. Làm theo các bước sau:</p>
+
+<div class="note">Nên đăng nhập sẵn bằng <strong>chính tài khoản Gmail</strong> mà bạn muốn tải hóa đơn trước khi bắt đầu. Giao diện Google có thể thay đổi đôi chút theo thời gian, nhưng tên các mục vẫn gần giống như dưới đây.</div>
+
+<h3>Bước 1 — Mở Google Cloud Console</h3>
+<ol>
+  <li class="step">Vào địa chỉ: <code>https://console.cloud.google.com/</code></li>
+  <li class="step">Đăng nhập bằng tài khoản Gmail cần dùng. Nếu được hỏi, đồng ý Điều khoản dịch vụ.</li>
+</ol>
+
+<h3>Bước 2 — Tạo một dự án (Project)</h3>
+<ol>
+  <li class="step">Bấm vào ô chọn dự án ở thanh trên cùng (cạnh chữ "Google Cloud").</li>
+  <li class="step">Bấm <strong>New Project / Dự án mới</strong>, đặt tên bất kỳ (ví dụ <em>Tai Hoa Don</em>) rồi bấm <strong>Create / Tạo</strong>.</li>
+  <li class="step">Chờ vài giây, rồi <strong>chọn đúng dự án vừa tạo</strong> ở ô trên cùng.</li>
+</ol>
+
+<h3>Bước 3 — Bật quyền đọc Gmail (Gmail API)</h3>
+<ol>
+  <li class="step">Trong ô tìm kiếm trên cùng, gõ <strong>Gmail API</strong> rồi chọn kết quả "Gmail API".</li>
+  <li class="step">Bấm nút <strong>Enable / Bật</strong>.</li>
+</ol>
+
+<h3>Bước 4 — Khai báo màn hình xin quyền (OAuth consent screen)</h3>
+<ol>
+  <li class="step">Vào menu trái: <strong>APIs &amp; Services → OAuth consent screen</strong> (một số bản ghi là <em>Google Auth Platform → Branding/Audience</em>).</li>
+  <li class="step">Chọn loại <strong>External / Bên ngoài</strong>, bấm <strong>Create / Tạo</strong>.</li>
+  <li class="step">Điền các mục bắt buộc (có dấu *): <strong>Tên ứng dụng</strong> (ví dụ <em>Tai Hoa Don</em>), <strong>Email hỗ trợ người dùng</strong> = email của bạn, <strong>Email liên hệ nhà phát triển</strong> = email của bạn. Các mục khác để trống. Bấm <strong>Save and Continue / Lưu và tiếp tục</strong> qua các bước (không cần thêm Scopes).</li>
+</ol>
+<div class="note"><strong>Rất quan trọng:</strong> ở mục <strong>Test users / Người dùng thử nghiệm</strong>, bấm <strong>+ Add Users</strong> và nhập <strong>chính địa chỉ Gmail của bạn</strong>, rồi Lưu. Nếu bỏ qua bước này, khi đăng nhập sẽ bị Google chặn với thông báo "đã chặn quyền truy cập".</div>
+
+<h3>Bước 5 — Tạo &amp; tải file credentials .json</h3>
+<ol>
+  <li class="step">Vào menu trái: <strong>APIs &amp; Services → Credentials</strong> (hoặc <em>Clients</em>).</li>
+  <li class="step">Bấm <strong>+ Create Credentials → OAuth client ID</strong>.</li>
+  <li class="step">Ở mục <strong>Application type / Loại ứng dụng</strong>, chọn <strong>Desktop app / Ứng dụng máy tính</strong>. Đặt tên bất kỳ, bấm <strong>Create</strong>.</li>
+  <li class="step">Hiện ra cửa sổ thành công — bấm <strong>Download JSON / Tải JSON</strong> để lưu file về máy. (Nếu lỡ tắt, bấm biểu tượng ⬇ tải xuống ở dòng client vừa tạo.)</li>
+</ol>
+<div class="tip">File tải về có tên dạng <code>client_secret_....json</code>. Đây <strong>chính là file credentials .json</strong> cần chọn ở <strong>Bước 3 của mục 2</strong> phía trên. Bạn có thể đổi tên file cho dễ nhớ (ví dụ <code>credentials_GP2.json</code>) — không sao cả.</div>
+
+<h3>Khi đăng nhập gặp màn hình cảnh báo "Google chưa xác minh ứng dụng"</h3>
+<p>Vì đây là ứng dụng riêng của bạn nên Google sẽ hiện cảnh báo. Cứ làm như sau là an toàn:</p>
+<ol>
+  <li class="step">Bấm <strong>Advanced / Nâng cao</strong>.</li>
+  <li class="step">Bấm <strong>Go to … (unsafe) / Chuyển đến … (không an toàn)</strong>.</li>
+  <li class="step">Bấm <strong>Continue / Tiếp tục</strong> để cấp quyền đọc Gmail cho phần mềm.</li>
+</ol>
+
+<div class="tip">Một file credentials .json có thể <strong>dùng chung cho nhiều tài khoản Gmail</strong>. Mỗi khi thêm khách mới, bạn chọn lại cùng file đó cũng được; phần mềm sẽ tạo đăng nhập riêng cho từng tài khoản.</div>
 
 <footer>
   Tải Hóa Đơn Gmail — Hướng dẫn sử dụng. Bấm <span class="kbd">Ctrl</span> + <span class="kbd">P</span> để in ra giấy nếu cần.
