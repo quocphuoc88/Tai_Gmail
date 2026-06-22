@@ -31,6 +31,9 @@ clients.json
 /app/emails.txt
 /app/NHAP.py
 
+# Trạng thái giao diện (nhớ cấu hình lần trước) -> riêng từng máy
+/app/gui_state.json
+
 # ===== Dữ liệu / kết quả sinh ra =====
 download_log.csv
 *.xlsx

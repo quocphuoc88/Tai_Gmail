@@ -9,12 +9,14 @@ Chạy:  ..\\.venv\\Scripts\\pythonw.exe gui.py
 """
 from __future__ import annotations
 
+import json
 import os
 import queue
 import shutil
 import sys
 import threading
 import tkinter as tk
+from datetime import datetime
 from tkinter import ttk, messagebox, scrolledtext, filedialog
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -24,6 +26,7 @@ if APP_DIR not in sys.path:
 from core.config import load_clients, save_clients, ClientConfig  # noqa: E402
 
 CLIENTS_FILE = os.path.join(APP_DIR, "clients.json")
+STATE_FILE = os.path.join(APP_DIR, "gui_state.json")  # nhớ cấu hình lần trước (riêng máy)
 
 try:
     from tkcalendar import DateEntry
@@ -84,6 +87,8 @@ class App:
 
         self._build_run_tab()
         self._build_cfg_tab()
+        self._load_state()  # khôi phục cấu hình lần trước (khách, ngày, chế độ)
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.root.after(100, self._drain_log)
         # Tự kiểm tra cập nhật khi mở (im lặng nếu lỗi mạng / chưa cấu hình)
         self.root.after(800, self._check_update_async)
@@ -230,6 +235,60 @@ class App:
         except Exception:
             pass
 
+    # ---- Nhớ cấu hình lần trước (gui_state.json) ----
+    def _set_date(self, widget, val):
+        if not val:
+            return
+        try:
+            if HAS_CALENDAR:
+                widget.set_date(datetime.strptime(val, "%Y-%m-%d").date())
+            else:
+                widget.delete(0, tk.END)
+                widget.insert(0, val)
+        except Exception:
+            pass
+
+    def _save_state(self):
+        try:
+            df = dt = ""
+            try:
+                df, dt = self._date_value(self.date_from), self._date_value(self.date_to)
+            except Exception:
+                pass
+            state = {
+                "clients": self._selected_ids(),
+                "override_dates": bool(self.override_dates.get()),
+                "date_from": df,
+                "date_to": dt,
+                "mode": self.mode.get(),
+            }
+            with open(STATE_FILE, "w", encoding="utf-8") as f:
+                json.dump(state, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+    def _load_state(self):
+        try:
+            with open(STATE_FILE, encoding="utf-8") as f:
+                st = json.load(f)
+        except Exception:
+            return
+        for cid in st.get("clients", []):
+            if cid in self.run_vars:
+                self.run_vars[cid].set(True)
+        if st.get("mode") in ("config", "all", "unread"):
+            self.mode.set(st["mode"])
+        od = bool(st.get("override_dates"))
+        self.override_dates.set(od)
+        self._toggle_dates()
+        if od:
+            self._set_date(self.date_from, st.get("date_from", ""))
+            self._set_date(self.date_to, st.get("date_to", ""))
+
+    def _on_close(self):
+        self._save_state()
+        self.root.destroy()
+
     def _selected_ids(self) -> list[str]:
         return [cid for cid, var in self.run_vars.items() if var.get()]
 
@@ -261,6 +320,7 @@ class App:
         if not ids:
             messagebox.showwarning("Chưa chọn khách", "Hãy chọn ít nhất một khách hàng.")
             return
+        self._save_state()
         from core.engine import build_gmail_query
         clients = load_clients(CLIENTS_FILE)
         self.log_msg("===== XEM TRƯỚC (không gọi Gmail) =====")
@@ -277,13 +337,7 @@ class App:
         if not ids:
             messagebox.showwarning("Chưa chọn khách", "Hãy chọn ít nhất một khách hàng.")
             return
-        names = ", ".join(self.clients[c].display_name or c for c in ids)
-        if not messagebox.askyesno(
-            "Xác nhận",
-            f"Bắt đầu tải hóa đơn cho {len(ids)} khách:\n{names}\n\n"
-            "Lần đầu mỗi khách sẽ mở trình duyệt để đăng nhập Google.",
-        ):
-            return
+        self._save_state()
         self.btn_run.configure(state="disabled")
         self.btn_dry.configure(state="disabled")
         self.status.configure(text="Đang chạy...", foreground="#c60")
