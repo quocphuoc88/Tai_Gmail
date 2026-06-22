@@ -43,6 +43,7 @@ from providers.win import is_win_email, download_win_invoice
 from providers.vetc import is_vetc_email, download_vetc_invoice
 from providers.smartsign import is_smartsign_email, download_smartsign_invoice
 from providers.ipos import is_ipos_email, download_ipos_invoice
+from providers.vnpt import is_vnpt_email, download_vnpt_invoice
 
 
 # =========================================================
@@ -68,6 +69,7 @@ PROVIDERS = [
     ("VETC", is_vetc_email, download_vetc_invoice),
     ("SMARTSIGN", is_smartsign_email, download_smartsign_invoice),
     ("IPOS", is_ipos_email, download_ipos_invoice),
+    ("VNPT", is_vnpt_email, download_vnpt_invoice),
     ("DIRECT", is_direct_link_email, download_direct_invoice),
 ]
 
