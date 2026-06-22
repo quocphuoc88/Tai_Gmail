@@ -21,6 +21,9 @@ credentials*.json
 # Token đăng nhập đã cấp quyền
 token*.json
 token_*.json
+# Cấu hình khách (chứa email khách + đường dẫn riêng) -> DỮ LIỆU RIÊNG TỪNG MÁY.
+# Giữ ở máy người dùng, KHÔNG đẩy lên GitHub. (clients.example.json là file mẫu, vẫn track.)
+clients.json
 
 # ===== Dữ liệu / kết quả sinh ra =====
 download_log.csv

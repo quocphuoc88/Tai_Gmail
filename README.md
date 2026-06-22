@@ -81,8 +81,10 @@ nhật, **chỉ code được thay**, còn `clients.json`, `credentials*`, `toke
 **Mỗi lần ra bản mới:** tăng số trong `app/version.txt` (vd `1.0.1`), commit + push.
 Các máy đang chạy sẽ thấy thông báo và tải về khi đồng ý.
 
-> Repo riêng tư: việc tải bản cập nhật cần thêm token truy cập — báo tôi nếu bạn
-> dùng repo riêng tư để bổ sung phần xác thực.
+**Bảo mật dữ liệu khách:** `app/clients.json` (chứa email khách + đường dẫn riêng)
+**KHÔNG nằm trong repo** — nó là dữ liệu riêng, ở lại từng máy (đã gitignore). Repo
+chỉ có code + `clients.example.json` (mẫu), nên đẩy lên GitHub **public an toàn,
+không cần token**. Máy mới khi chạy lần đầu sẽ tự tạo `clients.json` từ file mẫu.
 
 ## Trạng thái tái cấu trúc
 

@@ -110,8 +110,22 @@ def _to_bool(value) -> bool:
     return str(value).strip().upper() in {"YES", "TRUE", "1"}
 
 
+def ensure_clients_file(json_path: str) -> None:
+    """Máy mới chưa có clients.json -> tạo từ clients.example.json (nếu có).
+
+    Nhờ vậy clients.json (dữ liệu riêng) KHÔNG cần nằm trong repo/GitHub.
+    """
+    if os.path.exists(json_path):
+        return
+    example = os.path.join(os.path.dirname(json_path), "clients.example.json")
+    if os.path.exists(example):
+        import shutil
+        shutil.copyfile(example, json_path)
+
+
 def load_clients(json_path: str) -> Dict[str, ClientConfig]:
     """Nạp toàn bộ khách từ clients.json -> {client_id: ClientConfig}."""
+    ensure_clients_file(json_path)
     with open(json_path, "r", encoding="utf-8-sig") as f:
         raw = json.load(f)
 

@@ -1,0 +1,20 @@
+{
+  "VIDU": {
+    "display_name": "Tên hiển thị khách (vd Gia Phúc)",
+    "email": "taikhoan-gmail@gmail.com",
+    "credentials_file": "credentials_VIDU.json",
+    "token_file": "token_VIDU.json",
+    "root_dir": "D:\\Tai HDDT\\VIDU\\{date}",
+    "date_from": "2026-01-01",
+    "date_to": "2026-01-31",
+    "sender": "",
+    "subject_keyword": "",
+    "download_all": false,
+    "path_rules": [
+      {"kind": "email", "pattern": "nguoigui@example.com", "path": "D:\\Duong dan luu rieng\\{date}"}
+    ],
+    "folder_rules": [
+      {"kind": "email", "pattern": "nguoigui2@example.com", "folder": "TEN-THU-MUC-CON"}
+    ]
+  }
+}
