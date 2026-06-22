@@ -71,7 +71,7 @@ T_FOLDER = "Thư mục con (dưới thư mục mặc định)"
 class App:
     def __init__(self, root: tk.Tk):
         self.root = root
-        root.title("Tải hóa đơn Gmail - By Trần Quốc Phước - 0907.012.012")
+        root.title("Tải Hóa Đơn Gmail - By Trần Quốc Phước - 0907.012.012")
         root.geometry("820x680")
         root.minsize(720, 600)
         try:
@@ -111,7 +111,7 @@ class App:
         from core.updater import local_version
         bar = ttk.Frame(root, padding=(10, 6, 10, 0))
         bar.pack(fill="x")
-        ttk.Label(bar, text="Tải hóa đơn Gmail - By Trần Quốc Phước - 0907.012.012",
+        ttk.Label(bar, text="Tải Hóa Đơn Gmail",
                   font=("Segoe UI", 11, "bold")).pack(side="left")
         self.ver_label = ttk.Label(bar, text=f"  v{local_version()}", foreground="#777")
         self.ver_label.pack(side="left")
@@ -553,6 +553,19 @@ class App:
             self.ed_root.delete(0, tk.END)
             self.ed_root.insert(0, d.replace("/", "\\"))
 
+    def _center_dialog(self, dlg):
+        """Đưa cửa sổ con ra GIỮA cửa sổ chính (thay vì nhảy lên góc màn hình)."""
+        try:
+            dlg.update_idletasks()
+            pw, ph = self.root.winfo_width(), self.root.winfo_height()
+            px, py = self.root.winfo_rootx(), self.root.winfo_rooty()
+            dw, dh = dlg.winfo_width(), dlg.winfo_height()
+            x = px + max((pw - dw) // 2, 0)
+            y = py + max((ph - dh) // 3, 0)
+            dlg.geometry(f"+{x}+{y}")
+        except Exception:
+            pass
+
     # ---- thêm/sửa/xóa bộ lọc ----
     def _rule_dialog(self, init: dict | None = None) -> dict | None:
         dlg = tk.Toplevel(self.root)
@@ -604,6 +617,7 @@ class App:
         bb.grid(row=4, column=0, columnspan=3, pady=10)
         ttk.Button(bb, text="OK", command=ok).pack(side="left", padx=6)
         ttk.Button(bb, text="Hủy", command=dlg.destroy).pack(side="left", padx=6)
+        self._center_dialog(dlg)
         e_mail.focus_set()
         self.root.wait_window(dlg)
         return result or None
@@ -738,6 +752,7 @@ class App:
         bb.grid(row=6, column=0, columnspan=3, pady=12)
         ttk.Button(bb, text="Đăng nhập Google & Lưu", command=submit).pack(side="left", padx=6)
         ttk.Button(bb, text="Hủy", command=dlg.destroy).pack(side="left", padx=6)
+        self._center_dialog(dlg)
         e_id.focus_set()
         self.root.wait_window(dlg)
 
