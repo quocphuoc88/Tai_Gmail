@@ -58,6 +58,32 @@ cd app
 
 Mọi cấu hình từng khách nằm trong `app/clients.json`. **Thêm khách mới = thêm 1 khối JSON**, không cần copy file `.py`.
 
+## Cập nhật online qua GitHub
+
+Ứng dụng tự kiểm tra bản mới khi mở (và có nút **🔄 Kiểm tra cập nhật**). Khi cập
+nhật, **chỉ code được thay**, còn `clients.json`, `credentials*`, `token*`, `.venv`
+được **giữ nguyên**.
+
+**Thiết lập một lần** (để các máy tự tải bản mới về):
+
+1. Tạo một repo trên GitHub (riêng tư được), ví dụ `tennguoidung/Tai_Gmail`.
+2. Đẩy code lên:
+   ```powershell
+   git remote add origin https://github.com/tennguoidung/Tai_Gmail.git
+   git push -u origin main
+   ```
+3. Sửa `app/update_config.json`, điền đúng repo:
+   ```json
+   { "repo": "tennguoidung/Tai_Gmail", "branch": "main" }
+   ```
+   rồi commit + push lại.
+
+**Mỗi lần ra bản mới:** tăng số trong `app/version.txt` (vd `1.0.1`), commit + push.
+Các máy đang chạy sẽ thấy thông báo và tải về khi đồng ý.
+
+> Repo riêng tư: việc tải bản cập nhật cần thêm token truy cập — báo tôi nếu bạn
+> dùng repo riêng tư để bổ sung phần xác thực.
+
 ## Trạng thái tái cấu trúc
 
 - [x] **Bước 1:** Cứu mã nguồn ra khỏi `.venv`, đưa vào Git.

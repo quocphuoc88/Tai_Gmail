@@ -73,8 +73,10 @@ class App:
 
         self._reload_clients()
 
+        self._build_toolbar(root)
+
         self.nb = ttk.Notebook(root)
-        self.nb.pack(fill="both", expand=True, padx=8, pady=8)
+        self.nb.pack(fill="both", expand=True, padx=8, pady=(0, 8))
         self.tab_run = ttk.Frame(self.nb)
         self.tab_cfg = ttk.Frame(self.nb)
         self.nb.add(self.tab_run, text="  Tải hóa đơn  ")
@@ -83,6 +85,54 @@ class App:
         self._build_run_tab()
         self._build_cfg_tab()
         self.root.after(100, self._drain_log)
+        # Tự kiểm tra cập nhật khi mở (im lặng nếu lỗi mạng / chưa cấu hình)
+        self.root.after(800, self._check_update_async)
+
+    # ===================================================== CẬP NHẬT / TOOLBAR
+    def _build_toolbar(self, root):
+        from core.updater import local_version
+        bar = ttk.Frame(root, padding=(10, 6, 10, 0))
+        bar.pack(fill="x")
+        ttk.Label(bar, text="Tải Hóa Đơn Gmail", font=("Segoe UI", 11, "bold")).pack(side="left")
+        self.ver_label = ttk.Label(bar, text=f"  v{local_version()}", foreground="#777")
+        self.ver_label.pack(side="left")
+        ttk.Button(bar, text="🔄 Kiểm tra cập nhật",
+                   command=self._check_update_manual).pack(side="right")
+
+    def _check_update_async(self, manual=False):
+        """Kiểm tra cập nhật trong thread; đẩy kết quả qua hàng đợi."""
+        def work():
+            from core.updater import check_update, is_configured
+            if not is_configured():
+                if manual:
+                    self.log_q.put(("__INFO__", "Cập nhật",
+                                    "Chưa cấu hình nơi cập nhật.\nHãy điền repo GitHub vào "
+                                    "app\\update_config.json (xem hướng dẫn)."))
+                return
+            has, rv, lv = check_update()
+            if has:
+                self.log_q.put(("__ASK_UPDATE__", rv, lv))
+            elif manual:
+                self.log_q.put(("__INFO__", "Cập nhật",
+                                f"Bạn đang dùng bản mới nhất (v{lv})."))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _check_update_manual(self):
+        self._check_update_async(manual=True)
+
+    def _do_update(self):
+        self.nb.select(self.tab_run)
+        self.log_msg("\n[Cập nhật] Bắt đầu tải bản mới...")
+
+        def work():
+            from core.updater import download_and_apply, pip_install_requirements
+            def logger(m):
+                self.log_q.put(str(m))
+            ok, msg = download_and_apply(logger)
+            if ok:
+                pip_install_requirements(logger)
+            self.log_q.put(("__INFO__", "Cập nhật", msg))
+        threading.Thread(target=work, daemon=True).start()
 
     # ============================================================ DỮ LIỆU
     def _reload_clients(self):
@@ -283,6 +333,18 @@ class App:
                 # Yêu cầu hiện popup (đăng nhập lần đầu / đăng nhập lại)
                 if isinstance(item, tuple) and item and item[0] == "__POPUP__":
                     messagebox.showwarning(item[1], item[2])
+                    continue
+                if isinstance(item, tuple) and item and item[0] == "__INFO__":
+                    messagebox.showinfo(item[1], item[2])
+                    continue
+                if isinstance(item, tuple) and item and item[0] == "__ASK_UPDATE__":
+                    rv, lv = item[1], item[2]
+                    if messagebox.askyesno(
+                        "Có bản cập nhật",
+                        f"Đã có bản mới v{rv} (bạn đang dùng v{lv}).\n\n"
+                        "Cập nhật ngay? (Dữ liệu và cấu hình của bạn được giữ nguyên.)",
+                    ):
+                        self._do_update()
                     continue
                 if item == _DONE:
                     self.btn_run.configure(state="normal")
