@@ -5,8 +5,16 @@
 # Kết quả: dist\TaiHoaDonGmail\TaiHoaDonGmail.exe (+ _internal). Sau đó đặt bản
 # rời mã nguồn vào dist\TaiHoaDonGmail\app\ (script build_release lo việc này).
 import os
+from PyInstaller.utils.hooks import collect_submodules
 
 APP = SPECPATH  # = thư mục chứa file .spec (…\app)
+
+# selenium nạp submodule động (vd selenium.webdriver.chrome.webdriver) lúc chạy
+# -> phải gom hết, nếu không bản .exe báo "No module named ...".
+_hidden = ["tkcalendar", "babel.numbers"]
+_hidden += collect_submodules("selenium")
+_hidden += collect_submodules("trio")
+_hidden += collect_submodules("trio_websocket")
 
 # Thư viện nặng CHỈ dùng cho OCR captcha Petrolimex (nạp lười) -> loại cho gọn.
 excludes = [
@@ -19,7 +27,7 @@ a = Analysis(
     pathex=[APP],            # để 'import gui' trong launcher dò ra app + thư viện
     binaries=[],
     datas=[],                # KHÔNG gói mã nguồn/docs: chúng ship rời, cập nhật được
-    hiddenimports=["tkcalendar", "babel.numbers"],
+    hiddenimports=_hidden,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

@@ -248,7 +248,9 @@ def download_bkav_invoice(body_text: str, save_dir: str) -> bool:
         logger.warning("Email BKAV nhưng không tìm thấy mã tra cứu.")
         return False
 
-    link = f"http://tracuu.ehoadon.vn/{ma}"
+    # tracuu.ehoadon.vn (link rút gọn trong email) đã NGỪNG hoạt động (404) từ
+    # ~2026-06; vào thẳng trang tra cứu mới tchd.ehoadon.vn/TCHD?MTC=<mã>.
+    link = f"https://tchd.ehoadon.vn/TCHD?MTC={ma}"
     logger.info("BKAV - Mã tra cứu: %s -> %s", ma, link)
 
     ok = False
