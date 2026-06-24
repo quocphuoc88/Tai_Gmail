@@ -409,9 +409,6 @@ def run(cfg: ClientConfig, logger=print, notify=None) -> int:
                 # hóa đơn vào đúng thư mục lưu khách đã chọn.
                 save_dir = Path(cfg.base_save_dir)
         save_dir.mkdir(parents=True, exist_ok=True)
-        # Chỉ xếp theo nhà phát hành khi đang lưu theo NGƯỜI GỬI mặc định
-        # (không có path_rule riêng, không flat_save, không khớp folder_rule).
-        use_issuer_hint = (base_dir is None) and (not cfg.flat_save) and (folder_from_rules is None)
 
         # Ưu tiên 1: file đính kèm thật
         real_atts = [p for p in walk_parts(payload) if is_real_attachment(p)]
@@ -454,20 +451,9 @@ def run(cfg: ClientConfig, logger=print, notify=None) -> int:
                 continue
             logger(f"[{cfg.client_id}] EMAIL {prov_name}: {subject}")
 
-            # Xếp theo nhà phát hành nếu provider có gợi ý (vd Fast -> KAMEREO).
+            # Luôn lưu vào đúng thư mục đã chọn (hoặc thư mục cấu hình riêng);
+            # KHÔNG tự tách thư mục con theo người gửi / công ty phát hành.
             prov_save_dir = save_dir
-            if use_issuer_hint:
-                hint_fn = PROVIDER_FOLDER_HINTS.get(prov_name)
-                hint = None
-                if hint_fn:
-                    try:
-                        hint = hint_fn(subject, from_email, body_text)
-                    except Exception:
-                        hint = None
-                if hint:
-                    prov_save_dir = Path(cfg.base_save_dir) / hint
-                    prov_save_dir.mkdir(parents=True, exist_ok=True)
-                    logger(f"[{cfg.client_id}]   -> xếp theo nhà phát hành: {hint}")
 
             # Chỉ truyền name_prefix cho provider nào hỗ trợ (vd direct_link).
             extra = {}
