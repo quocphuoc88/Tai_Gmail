@@ -401,8 +401,13 @@ def run(cfg: ClientConfig, logger=print, notify=None) -> int:
             save_dir = Path(cfg.base_save_dir)
         else:
             folder_from_rules = choose_folder_by_rules(from_email, cfg.folder_rules)
-            folder_name = folder_from_rules or normalize_sender_folder(from_email)
-            save_dir = Path(cfg.base_save_dir) / folder_name
+            if folder_from_rules:
+                # Có cấu hình riêng cho người gửi -> lưu theo thư mục cấu hình.
+                save_dir = Path(cfg.base_save_dir) / folder_from_rules
+            else:
+                # KHÔNG còn tự tạo thư mục con theo email người gửi: đổ thẳng
+                # hóa đơn vào đúng thư mục lưu khách đã chọn.
+                save_dir = Path(cfg.base_save_dir)
         save_dir.mkdir(parents=True, exist_ok=True)
         # Chỉ xếp theo nhà phát hành khi đang lưu theo NGƯỜI GỬI mặc định
         # (không có path_rule riêng, không flat_save, không khớp folder_rule).
