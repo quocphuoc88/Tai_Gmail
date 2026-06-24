@@ -456,6 +456,8 @@ class App:
         self.cfg_combo.bind("<<ComboboxSelected>>", lambda e: self._load_editor())
         ttk.Button(top, text="➕ Thêm khách (Gmail)", command=self._add_client).pack(side="left", padx=4)
         ttk.Button(top, text="🗑️ Xóa khách", command=self._delete_client).pack(side="left")
+        ttk.Button(top, text="📁 Khôi phục dữ liệu bản cũ",
+                   command=self._restore_from_old).pack(side="right")
 
         info = ttk.LabelFrame(main, text="Thông tin khách")
         info.pack(fill="x", **pad)
@@ -811,6 +813,79 @@ class App:
         self.cfg_client.set("")
         self._refresh_combo()
         messagebox.showinfo("Đã xóa", f"Đã xóa '{name}'.")
+
+    # ---- Khôi phục dữ liệu từ bản cài cũ (khi nhận file .exe mới) ----
+    def _restore_from_old(self):
+        """Lấy lại cấu hình + đăng nhập từ thư mục bản CŨ sang bản đang dùng.
+
+        Copy clients.json + credentials*.json + token*.json (+ gui_state.json)
+        nên KHÔNG phải đăng nhập Google lại, không phải khai báo khách lại.
+        """
+        import glob
+        src = filedialog.askdirectory(
+            title="Chọn thư mục bản CŨ (nơi có file TaiHoaDonGmail.exe hoặc thư mục 'app')"
+        )
+        if not src:
+            return
+
+        # Dữ liệu có thể nằm ở thư mục đã chọn, hoặc trong thư mục con 'app'.
+        data_dir = None
+        for c in (src, os.path.join(src, "app")):
+            if (os.path.isfile(os.path.join(c, "clients.json"))
+                    or glob.glob(os.path.join(c, "credentials*.json"))
+                    or glob.glob(os.path.join(c, "token*.json"))):
+                data_dir = c
+                break
+
+        if not data_dir:
+            messagebox.showwarning(
+                "Không thấy dữ liệu",
+                "Không tìm thấy clients.json / credentials / token trong thư mục đã chọn.\n"
+                "Hãy chọn đúng thư mục bản cũ (nơi có TaiHoaDonGmail.exe hoặc thư mục 'app').",
+            )
+            return
+        if os.path.abspath(data_dir) == os.path.abspath(APP_DIR):
+            messagebox.showinfo("Cùng thư mục", "Đây chính là bản đang dùng, không cần khôi phục.")
+            return
+
+        if not messagebox.askyesno(
+            "Khôi phục dữ liệu",
+            "Việc này sẽ GHI ĐÈ cấu hình hiện tại bằng dữ liệu từ bản cũ "
+            "(khách hàng, đăng nhập Google).\nTiếp tục?",
+        ):
+            return
+
+        n_cli = n_cred = n_tok = 0
+        try:
+            cj = os.path.join(data_dir, "clients.json")
+            if os.path.isfile(cj):
+                shutil.copyfile(cj, os.path.join(APP_DIR, "clients.json"))
+                n_cli = 1
+            for f in glob.glob(os.path.join(data_dir, "credentials*.json")):
+                shutil.copyfile(f, os.path.join(APP_DIR, os.path.basename(f)))
+                n_cred += 1
+            for f in glob.glob(os.path.join(data_dir, "token*.json")):
+                shutil.copyfile(f, os.path.join(APP_DIR, os.path.basename(f)))
+                n_tok += 1
+            gs = os.path.join(data_dir, "gui_state.json")
+            if os.path.isfile(gs):
+                shutil.copyfile(gs, os.path.join(APP_DIR, "gui_state.json"))
+        except Exception as e:
+            messagebox.showerror("Lỗi khôi phục", str(e))
+            return
+
+        # Nạp lại danh sách khách + làm mới giao diện
+        self._reload_clients()
+        self._populate_run_checks()
+        self._refresh_combo()
+        messagebox.showinfo(
+            "Đã khôi phục",
+            f"Đã lấy lại dữ liệu từ bản cũ:\n"
+            f"- Cấu hình khách (clients.json): {'có' if n_cli else 'không thấy'}\n"
+            f"- File credentials: {n_cred}\n"
+            f"- File đăng nhập (token): {n_tok}\n\n"
+            "Bạn KHÔNG cần đăng nhập Google lại.",
+        )
 
 
 def main():
